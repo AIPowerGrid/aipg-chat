@@ -1,3 +1,20 @@
+# AIPG fork — DOX + standards (AI Power Grid)
+
+> This repo is **AI Power Grid's chat** (aipg.chat) — a fork of **Onyx** (upstream
+> guidance preserved below). It's the user-facing chat product, pointed at the
+> grid's own OpenAI-compatible `/v1` (dogfooding our own network).
+>
+> - **Inherit org engineering standards:** `aipg-documentation/engineering-standards/`
+>   (core + `git.md` + `typescript.md` + `python.md`).
+> - **Keep the fork rebasable:** isolate AIPG changes (branding, grid endpoint/keys,
+>   deployment) and don't diverge from upstream Onyx structure without reason.
+> - **Stack:** `backend/` (Onyx Python + Celery), `web/` (Onyx Next.js — has its own
+>   `AGENTS.md`), `desktop/` (Electron — own `AGENTS.md`).
+> - **No AI / co-author attribution** in commits (org rule).
+> - Everything below the line is upstream Onyx's own guidance — follow it for general dev.
+
+---
+
 # PROJECT KNOWLEDGE BASE
 
 This file provides guidance to AI agents when working with code in this repository.
