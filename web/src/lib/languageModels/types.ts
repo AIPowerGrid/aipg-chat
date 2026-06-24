@@ -7,6 +7,11 @@ export interface ModelConfiguration {
   max_input_tokens: number | null;
   supports_image_input: boolean;
   supports_reasoning: boolean;
+  /** Display-only metadata surfaced in the model picker (Nebius TokenFactory). */
+  quantization?: string | null;
+  country_code?: string | null;
+  requests_per_minute?: number | null;
+  supported_features?: string[];
   /** True when this is the provider's recommended default model. */
   is_recommended_default?: boolean;
   display_name?: string;
@@ -16,6 +21,13 @@ export interface ModelConfiguration {
   vendor?: string;
   version?: string;
   region?: string;
+  /**
+   * Frontend-derived. Always populated by the SWR hooks before data reaches
+   * any consumer. Resolution order: custom_display_name → display_name → name.
+   * Use this field everywhere a model name is rendered — never read
+   * custom_display_name / display_name / name directly for display purposes.
+   */
+  effectiveDisplayName: string;
 }
 
 export enum LLMProviderName {
@@ -31,6 +43,7 @@ export enum LLMProviderName {
   LITELLM_PROXY = "litellm_proxy",
   BIFROST = "bifrost",
   OPENAI_COMPATIBLE = "openai_compatible",
+  NEBIUS_TOKENFACTORY = "nebius_tokenfactory",
   CUSTOM = "custom",
 }
 
@@ -197,6 +210,26 @@ export interface OpenAICompatibleModelResponse {
   max_input_tokens: number | null;
   supports_image_input: boolean;
   supports_reasoning: boolean;
+}
+
+export interface NebiusTokenfactoryFetchParams {
+  api_base?: string;
+  api_key?: string;
+  provider_name?: string;
+  provider_id?: number;
+  signal?: AbortSignal;
+}
+
+export interface NebiusTokenfactoryModelResponse {
+  name: string;
+  display_name: string;
+  max_input_tokens: number | null;
+  supports_image_input: boolean;
+  supports_reasoning: boolean;
+  quantization: string | null;
+  country_code: string | null;
+  requests_per_minute: number | null;
+  supported_features: string[];
 }
 
 export interface VertexAIFetchParams {

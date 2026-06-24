@@ -10,10 +10,7 @@ import { useFederatedConnectors, useFilters, useLlmManager } from "@/lib/hooks";
 import { useForcedTools } from "@/lib/hooks/useForcedTools";
 import OnyxInitializingLoader from "@/components/OnyxInitializingLoader";
 import { OnyxDocument, MinimalOnyxDocument } from "@/lib/search/interfaces";
-import {
-  useSettingsContext,
-  useVectorDbEnabled,
-} from "@/providers/SettingsProvider";
+import { useSettings } from "@/lib/settings/hooks";
 import Dropzone from "react-dropzone";
 import AppInputBar, { AppInputBarHandle } from "@/sections/input/AppInputBar";
 import useChatSessions from "@/hooks/useChatSessions";
@@ -23,6 +20,7 @@ import { useDocumentSets } from "@/lib/hooks/useDocumentSets";
 import { useAgents } from "@/lib/agents/hooks";
 import { AppPopup } from "@/app/app/components/AppPopup";
 import { useUser } from "@/providers/UserProvider";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import NoAgentModal from "@/sections/modals/NoAgentModal";
 import PreviewModal from "@/sections/modals/PreviewModal";
 import Modal from "@/refresh-components/Modal";
@@ -34,7 +32,7 @@ import { FederatedConnectorDetail, UserRole, ValidSources } from "@/lib/types";
 import DocumentsSidebar from "@/sections/document-sidebar/DocumentsSidebar";
 import useChatController from "@/hooks/useChatController";
 import useMultiModelChat from "@/hooks/useMultiModelChat";
-import ModelSelector from "@/refresh-components/popovers/ModelSelector";
+import MultiModelSelector from "@/sections/model-selector/MultiModelSelector";
 import { useAgentController } from "@/lib/agents/hooks";
 import useChatSessionController from "@/hooks/useChatSessionController";
 import useDeepResearchToggle from "@/hooks/useDeepResearchToggle";
@@ -69,10 +67,12 @@ import { Button, Spacer } from "@opal/components";
 import { IllustrationContent, RootLayout } from "@opal/layouts";
 import { SvgNotFound, SvgNoAccess } from "@opal/illustrations";
 import useAppFocus from "@/hooks/useAppFocus";
+import useScreenSize from "@/hooks/useScreenSize";
 import { useSidebarState } from "@opal/layouts";
 import { useQueryController } from "@/providers/QueryControllerProvider";
 import WelcomeMessage from "@/app/app/components/WelcomeMessage";
 import ChatUI from "@/sections/chat/ChatUI";
+import { useFullWidthChat } from "@/providers/FullWidthChatProvider";
 import { paidTierGated } from "@/ce";
 import EESearchUI from "@/ee/sections/SearchUI";
 const SearchUI = paidTierGated(EESearchUI);
@@ -126,6 +126,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const router = useRouter();
   const appFocus = useAppFocus();
+  const { isMobile } = useScreenSize();
 
   useToastFromQuery({
     oauth_connected: {
@@ -147,23 +148,23 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   // NOTE: this must be done here, in a client component since
   // settings are passed in via Context and therefore aren't
   // available in server-side components
-  const settings = useSettingsContext();
+  const settings = useSettings();
+  const { appName } = settings;
 
   const appNameRef = useRef<string>("Onyx");
   useEffect(() => {
-    const appName = settings.enterpriseSettings?.application_name || "Onyx";
     appNameRef.current = appName;
     document.title = currentChatSession?.name
       ? `${currentChatSession.name} — ${appName}`
       : appName;
-  }, [currentChatSession?.name, settings.enterpriseSettings?.application_name]);
+  }, [currentChatSession?.name, appName]);
   useEffect(() => {
     return () => {
       document.title = appNameRef.current;
     };
   }, []);
 
-  const vectorDbEnabled = useVectorDbEnabled();
+  const { vectorDbEnabled } = settings;
   const { ccPairs } = useCCPairs(vectorDbEnabled);
   const { tags } = useTags();
   const { documentSets } = useDocumentSets();
@@ -190,6 +191,11 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const { data: federatedConnectorsData } = useFederatedConnectors();
 
   const { user } = useUser();
+  // `useUser()` reports null while loading, so gating on it would redirect during
+  // the /me load window. Read the raw result instead (undefined = loading, null =
+  // resolved signed-out). This matters for anonymous users specifically: they're
+  // kept on the login page, so unlike logged-in users they wouldn't bounce back.
+  const { user: resolvedUser } = useCurrentUser();
 
   function processSearchParamsAndSubmitMessage(searchParamsString: string) {
     const newSearchParams = new URLSearchParams(searchParamsString);
@@ -308,7 +314,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     liveAgent,
     currentChatSessionId,
     currentChatSession ?? undefined,
-    settings
+    settings.disable_default_assistant ?? false
   );
 
   const scrollContainerRef = useRef<ChatScrollContainerHandle>(null);
@@ -414,6 +420,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
   const isStreaming = currentChatState === "streaming";
 
   const multiModel = useMultiModelChat(llmManager);
+
+  const { fullWidthChat } = useFullWidthChat();
 
   // Auto-fold sidebar when a multi-model message is submitted.
   // Stays collapsed until the user exits multi-model mode (removes models).
@@ -556,7 +564,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     }
   }, [documentSidebarVisible, updateCurrentDocumentSidebarVisible]);
 
-  if (!user) {
+  if (resolvedUser === null) {
     redirect("/auth/login");
   }
 
@@ -708,7 +716,11 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     (liveAgent?.starter_messages?.length ?? 0) > 0;
 
   const gridStyle = {
-    gridTemplateColumns: "1fr",
+    // minmax(0, 1fr) (instead of "1fr") lets the single column shrink to the
+    // grid's width. A bare "1fr" is minmax(auto, 1fr), whose auto minimum is
+    // the content's min-content — wide content (e.g. the onboarding cards) would
+    // otherwise blow the column past the viewport and clip the right edge.
+    gridTemplateColumns: "minmax(0, 1fr)",
     gridTemplateRows: isSearch
       ? "0fr auto 1fr"
       : appFocus.isChat()
@@ -724,7 +736,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     <>
       <AppPopup />
 
-      {retrievalEnabled && documentSidebarVisible && settings.isMobile && (
+      {retrievalEnabled && documentSidebarVisible && isMobile && (
         <div className="md:hidden">
           <Modal
             open
@@ -761,25 +773,23 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
       <FederatedOAuthModal />
 
-      {!(noAgents && !isLoadingAgents) &&
-        retrievalEnabled &&
-        !settings.isMobile && (
-          <RootLayout.RightPanel>
-            <div
-              className={cn(
-                "overflow-hidden transition-all duration-300 ease-in-out h-full",
-                documentSidebarVisible ? "w-100" : "w-0"
-              )}
-            >
-              <DocumentsSidebar
-                setPresentingDocument={setPresentingDocument}
-                modal={false}
-                closeSidebar={handleDesktopDocumentSidebarClose}
-                selectedDocuments={selectedDocuments}
-              />
-            </div>
-          </RootLayout.RightPanel>
-        )}
+      {!(noAgents && !isLoadingAgents) && retrievalEnabled && !isMobile && (
+        <RootLayout.RightPanel>
+          <div
+            className={cn(
+              "overflow-hidden transition-all duration-300 ease-in-out h-full",
+              documentSidebarVisible ? "w-100" : "w-0"
+            )}
+          >
+            <DocumentsSidebar
+              setPresentingDocument={setPresentingDocument}
+              modal={false}
+              closeSidebar={handleDesktopDocumentSidebarClose}
+              selectedDocuments={selectedDocuments}
+            />
+          </div>
+        </RootLayout.RightPanel>
+      )}
 
       <div className="w-full h-full overflow-hidden">
         <Dropzone
@@ -799,7 +809,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 style={gridStyle}
               >
                 {/* ── Top row: ChatUI / WelcomeMessage / ProjectUI ── */}
-                <div className="row-start-1 min-h-0 overflow-hidden flex flex-col items-center px-4">
+                <div className="row-start-1 min-h-0 overflow-hidden flex flex-col items-center px-2 sm:px-4">
                   {/* ChatUI */}
                   <Fade
                     show={
@@ -817,6 +827,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                       autoScroll={autoScrollEnabled}
                       isStreaming={isStreaming}
                       onScrollButtonVisibilityChange={setShowScrollButton}
+                      flushContent={fullWidthChat}
                     >
                       <ChatUI
                         liveAgent={liveAgent!}
@@ -832,6 +843,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         onResubmit={handleResubmitLastMessage}
                         anchorNodeId={anchorNodeId}
                         selectedModels={multiModel.selectedModels}
+                        fullWidthChat={fullWidthChat}
                       />
                     </ChatScrollContainer>
                   </Fade>
@@ -908,10 +920,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                         !(
                           state.phase === "idle" && state.appMode === "search"
                         ) &&
-                        liveAgent &&
-                        !llmManager.isLoadingProviders && (
-                          <ModelSelector
-                            llmManager={llmManager}
+                        liveAgent && (
+                          <MultiModelSelector
                             selectedModels={multiModel.selectedModels}
                             onAdd={multiModel.addModel}
                             onRemove={multiModel.removeModel}
@@ -926,11 +936,16 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 {/* ── Middle-center: AppInputBar ── */}
                 <div
                   className={cn(
-                    "row-start-2 flex flex-col items-center px-4",
+                    "row-start-2 flex flex-col items-center px-2 sm:px-4",
                     sessionFetchError && "hidden"
                   )}
                 >
-                  <div className="relative w-full max-w-(--app-page-main-content-width) flex flex-col">
+                  <div
+                    className={cn(
+                      "relative w-full flex flex-col",
+                      !fullWidthChat && "max-w-(--app-page-main-content-width)"
+                    )}
+                  >
                     {/* Scroll to bottom button - positioned absolutely above AppInputBar */}
                     {appFocus.isChat() && showScrollButton && (
                       <div className="absolute -top-14 self-center">
@@ -983,19 +998,16 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                           isSearch ? "h-[14px]" : "h-0"
                         )}
                       />
-                      {appFocus.isChat() &&
-                        liveAgent &&
-                        !llmManager.isLoadingProviders && (
-                          <div className="pb-1">
-                            <ModelSelector
-                              llmManager={llmManager}
-                              selectedModels={multiModel.selectedModels}
-                              onAdd={multiModel.addModel}
-                              onRemove={multiModel.removeModel}
-                              onReplace={multiModel.replaceModel}
-                            />
-                          </div>
-                        )}
+                      {appFocus.isChat() && liveAgent && (
+                        <div className="pb-1">
+                          <MultiModelSelector
+                            selectedModels={multiModel.selectedModels}
+                            onAdd={multiModel.addModel}
+                            onRemove={multiModel.removeModel}
+                            onReplace={multiModel.replaceModel}
+                          />
+                        </div>
+                      )}
                       <AppInputBar
                         ref={chatInputBarRef}
                         deepResearchEnabled={
@@ -1044,7 +1056,7 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
                 </div>
 
                 {/* ── Bottom: SearchResults + SourceFilter / Suggestions / ProjectChatList ── */}
-                <div className="row-start-3 min-h-0 overflow-hidden flex flex-col items-center w-full px-4">
+                <div className="row-start-3 min-h-0 overflow-hidden flex flex-col items-center w-full px-2 sm:px-4">
                   {/* Agent description below input */}
                   {(appFocus.isNewSession() || appFocus.isAgent()) &&
                     !isDefaultAgent && (

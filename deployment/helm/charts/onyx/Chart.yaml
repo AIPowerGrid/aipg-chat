@@ -1,11 +1,11 @@
 apiVersion: v2
 name: onyx
-description: A Helm chart for Kubernetes
+description: Onyx application and Craft sandbox deployment chart
 home: https://www.onyx.app/
 sources:
   - "https://github.com/onyx-dot-app/onyx"
 type: application
-version: 0.6.0
+version: 0.6.7
 appVersion: latest
 annotations:
   category: Productivity
@@ -16,9 +16,12 @@ annotations:
     - name: background
       image: docker.io/onyxdotapp/onyx-backend:latest
   artifacthub.io/changes: |
-    - kind: changed
-      description: Preserve Craft opencode history across Kubernetes sandbox
-        restarts by restoring it before opencode starts.
+    - kind: security
+      description: Add an egress NetworkPolicy on the Craft sandbox pods restricting their egress to
+        the sandbox proxy (:8080) and kube-dns (:53) only. CNI-layer backstop to the in-pod iptables
+        in firewall-init.sh, so a sandbox that bypasses that iptables still cannot reach anything but
+        the proxy. DNS is allowed because sandbox-init resolves the proxy FQDN before its iptables
+        closes DNS.
 dependencies:
   - name: cloudnative-pg
     version: 0.26.0

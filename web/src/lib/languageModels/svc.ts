@@ -28,6 +28,8 @@ import {
   type BifrostFetchParams,
   type OpenAICompatibleFetchParams,
   type OpenAICompatibleModelResponse,
+  type NebiusTokenfactoryFetchParams,
+  type NebiusTokenfactoryModelResponse,
 } from "@/lib/languageModels/types";
 
 /**
@@ -161,6 +163,7 @@ export const fetchBedrockModels = async (
       max_input_tokens: modelData.max_input_tokens,
       supports_image_input: modelData.supports_image_input,
       supports_reasoning: false,
+      effectiveDisplayName: modelData.display_name || modelData.name,
     }));
 
     return { models };
@@ -215,6 +218,7 @@ export const fetchOllamaModels = async (
       max_input_tokens: modelData.max_input_tokens,
       supports_image_input: modelData.supports_image_input,
       supports_reasoning: false,
+      effectiveDisplayName: modelData.display_name || modelData.name,
     }));
 
     return { models };
@@ -276,6 +280,7 @@ export const fetchOpenRouterModels = async (
       max_input_tokens: modelData.max_input_tokens,
       supports_image_input: modelData.supports_image_input,
       supports_reasoning: false,
+      effectiveDisplayName: modelData.display_name || modelData.name,
     }));
 
     return { models };
@@ -335,6 +340,7 @@ export const fetchLMStudioModels = async (
       max_input_tokens: modelData.max_input_tokens,
       supports_image_input: modelData.supports_image_input,
       supports_reasoning: modelData.supports_reasoning,
+      effectiveDisplayName: modelData.display_name || modelData.name,
     }));
 
     return { models };
@@ -393,6 +399,7 @@ export const fetchBifrostModels = async (
       max_input_tokens: modelData.max_input_tokens,
       supports_image_input: modelData.supports_image_input,
       supports_reasoning: modelData.supports_reasoning,
+      effectiveDisplayName: modelData.display_name || modelData.name,
     }));
 
     return { models };
@@ -451,6 +458,7 @@ export const fetchOpenAICompatibleModels = async (
       max_input_tokens: modelData.max_input_tokens,
       supports_image_input: modelData.supports_image_input,
       supports_reasoning: modelData.supports_reasoning,
+      effectiveDisplayName: modelData.display_name || modelData.name,
     }));
 
     return { models };
@@ -510,6 +518,7 @@ export const fetchLiteLLMProxyModels = async (
       max_input_tokens: modelData.max_input_tokens,
       supports_image_input: modelData.supports_image_input,
       supports_reasoning: modelData.supports_reasoning,
+      effectiveDisplayName: modelData.model_name,
     }));
 
     return { models };
@@ -588,7 +597,82 @@ export const fetchModels = async (
         provider_name: formValues.name,
         signal,
       });
+    case LLMProviderName.NEBIUS_TOKENFACTORY:
+      return fetchNebiusTokenfactoryModels({
+        api_base: formValues.api_base,
+        api_key: formValues.api_key,
+        provider_name: formValues.name,
+        signal,
+      });
     default:
       return { models: [], error: `Unknown provider: ${providerName}` };
+  }
+};
+
+/**
+ * Fetches models from a Nebius Token Factory provider (/v1/models). Carries
+ * the per-model tool/function-calling capability so the chat path can skip
+ * tools for models that don't support them.
+ */
+export const fetchNebiusTokenfactoryModels = async (
+  params: NebiusTokenfactoryFetchParams
+): Promise<{ models: ModelConfiguration[]; error?: string }> => {
+  const apiBase = params.api_base;
+  if (!apiBase) {
+    return { models: [], error: "API Base is required" };
+  }
+
+  try {
+    const response = await fetch(
+      "/api/admin/llm/nebius-tokenfactory/available-models",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          api_base: apiBase,
+          api_key: params.api_key,
+          provider_name: params.provider_name,
+          provider_id: params.provider_id,
+        }),
+        signal: params.signal,
+      }
+    );
+
+    if (!response.ok) {
+      let errorMessage = "Failed to fetch models";
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch (jsonError) {
+        console.warn(
+          "Failed to parse Nebius Token Factory model fetch error response",
+          jsonError
+        );
+      }
+      return { models: [], error: errorMessage };
+    }
+
+    const data: NebiusTokenfactoryModelResponse[] = await response.json();
+    const models: ModelConfiguration[] = data.map((modelData) => ({
+      name: modelData.name,
+      display_name: modelData.display_name,
+      is_visible: true,
+      max_input_tokens: modelData.max_input_tokens,
+      supports_image_input: modelData.supports_image_input,
+      supports_reasoning: modelData.supports_reasoning,
+      quantization: modelData.quantization,
+      country_code: modelData.country_code,
+      requests_per_minute: modelData.requests_per_minute,
+      supported_features: modelData.supported_features,
+      effectiveDisplayName: modelData.display_name || modelData.name,
+    }));
+
+    return { models };
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : "Unknown error";
+    return { models: [], error: errorMessage };
   }
 };

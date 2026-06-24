@@ -14,6 +14,7 @@ from onyx.external_apps.providers.github import GitHubProvider
 from onyx.external_apps.providers.gmail import GmailProvider
 from onyx.external_apps.providers.google_calendar import GoogleCalendarProvider
 from onyx.external_apps.providers.google_drive import GoogleDriveProvider
+from onyx.external_apps.providers.hubspot import HubspotProvider
 from onyx.external_apps.providers.linear import LinearProvider
 from onyx.external_apps.providers.slack import SlackProvider
 
@@ -24,6 +25,7 @@ _PROVIDER_CLASSES: list[type[ExternalAppProvider]] = [
     GmailProvider,
     LinearProvider,
     GitHubProvider,
+    HubspotProvider,
 ]
 
 
@@ -198,13 +200,3 @@ def fetch_onyx_managed_built_in_apps() -> list[BuiltInExternalAppDescriptor]:
         for cls in _PROVIDER_CLASSES
         if issubclass(cls, OnyxManagedExtApp)
     ]
-
-
-def fetch_built_in_app(app_type: ExternalAppType) -> BuiltInExternalAppDescriptor:
-    for cls in _PROVIDER_CLASSES:
-        if cls.spec.app_type == app_type:
-            return _descriptor_for(cls)
-    raise OnyxError(
-        OnyxErrorCode.NOT_FOUND,
-        f"No built-in app for app_type={app_type}.",
-    )

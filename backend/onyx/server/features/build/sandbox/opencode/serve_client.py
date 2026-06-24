@@ -37,6 +37,9 @@ from onyx.server.features.build.sandbox.event_schema import Error
 from onyx.server.features.build.sandbox.event_schema import PromptResponse
 from onyx.server.features.build.sandbox.event_schema import ToolCallProgress
 from onyx.server.features.build.sandbox.event_schema import ToolCallStart
+from onyx.server.features.build.sandbox.event_schema import TURN_ERROR_CODE_SESSION
+from onyx.server.features.build.sandbox.event_schema import TURN_ERROR_CODE_TIMEOUT
+from onyx.server.features.build.sandbox.event_schema import TURN_ERROR_CODE_TRANSPORT
 from onyx.server.features.build.sandbox.opencode.event_bus import _Subscription
 from onyx.server.features.build.sandbox.opencode.event_bus import BUS_CLOSED_SENTINEL
 from onyx.server.features.build.sandbox.opencode.event_bus import PodEventBus
@@ -190,7 +193,7 @@ def _tool_title(tool: str) -> str:
 
 # opencode's tool status values → ToolCallStatus literal.
 # Onyx schema: "pending" | "in_progress" | "completed" | "failed"
-# opencode emits: "pending", "running", "completed". "running" → "in_progress".
+# opencode emits: "pending", "running", "completed", "error". "running" → "in_progress".
 _TOOL_STATUS_MAP: dict[str, str] = {
     "pending": "pending",
     "running": "in_progress",
@@ -265,10 +268,17 @@ def _wrap_raw_output(state: dict[str, Any]) -> dict[str, Any] | None:
 
     Tools where ``state.output`` is already a dict (none observed in Phase 0
     but possible) get passed through unchanged.
+
+    Error-state tool parts carry their message in ``state.error`` instead of
+    ``state.output``.
     """
     out = state.get("output")
     if out is None:
-        return None
+        err = state.get("error")
+        if isinstance(err, str) and err:
+            out = err
+        else:
+            return None
     if isinstance(out, str):
         wrapped: dict[str, Any] = {"output": out}
         metadata = state.get("metadata")
@@ -757,6 +767,11 @@ def _emit_tool_events(
 
     raw_status = part_state.get("status", "pending")
     status = _tool_status(raw_status)
+    if status == "completed":
+        metadata = part_state.get("metadata")
+        exit_code = metadata.get("exit") if isinstance(metadata, dict) else None
+        if isinstance(exit_code, int) and exit_code != 0:
+            status = "failed"
     raw_input = part_state.get("input") or None
     raw_output = _wrap_raw_output(part_state)
     content = _synthesize_tool_content(tool, part_state)
@@ -818,7 +833,7 @@ def _emit_terminator(
             msg = str(data.get("message") or "")
         if not msg:
             msg = str(error.get("name") or "session error")
-        yield Error.model_validate({"code": -1, "message": msg})
+        yield Error.model_validate({"code": TURN_ERROR_CODE_SESSION, "message": msg})
         return
 
     stop_reason = "end_turn"
@@ -1273,7 +1288,10 @@ class OpencodeServeClient:
                 return
             except httpx.HTTPError as e:
                 yield Error.model_validate(
-                    {"code": -3, "message": f"prompt_async failed: {e}"}
+                    {
+                        "code": TURN_ERROR_CODE_TRANSPORT,
+                        "message": f"prompt_async failed: {e}",
+                    }
                 )
                 return
 
@@ -1318,7 +1336,7 @@ class OpencodeServeClient:
             if self._event_bus is None:
                 yield Error.model_validate(
                     {
-                        "code": -3,
+                        "code": TURN_ERROR_CODE_TRANSPORT,
                         "message": "opencode /event bus is unavailable",
                     }
                 )
@@ -1327,7 +1345,7 @@ class OpencodeServeClient:
             if self._event_bus.closed:
                 yield Error.model_validate(
                     {
-                        "code": -3,
+                        "code": TURN_ERROR_CODE_TRANSPORT,
                         "message": "event bus closed before /event stream became ready",
                     }
                 )
@@ -1347,7 +1365,7 @@ class OpencodeServeClient:
             if remaining <= 0:
                 yield Error.model_validate(
                     {
-                        "code": -3,
+                        "code": TURN_ERROR_CODE_TRANSPORT,
                         "message": "opencode /event stream did not become ready",
                     }
                 )
@@ -1368,7 +1386,7 @@ class OpencodeServeClient:
             if raw is BUS_CLOSED_SENTINEL:
                 yield Error.model_validate(
                     {
-                        "code": -3,
+                        "code": TURN_ERROR_CODE_TRANSPORT,
                         "message": "event bus closed before /event stream became ready",
                     }
                 )
@@ -1416,7 +1434,10 @@ class OpencodeServeClient:
             if remaining <= 0:
                 self.abort(opencode_session_id, directory=directory)
                 yield Error.model_validate(
-                    {"code": -1, "message": "Timeout waiting for response"}
+                    {
+                        "code": TURN_ERROR_CODE_TIMEOUT,
+                        "message": "Timeout waiting for response",
+                    }
                 )
                 return
 
@@ -1435,7 +1456,7 @@ class OpencodeServeClient:
                 if not terminated_locally:
                     yield Error.model_validate(
                         {
-                            "code": -3,
+                            "code": TURN_ERROR_CODE_TRANSPORT,
                             "message": "event bus closed before terminator",
                         }
                     )

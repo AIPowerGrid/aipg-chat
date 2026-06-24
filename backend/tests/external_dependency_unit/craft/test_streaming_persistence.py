@@ -31,7 +31,7 @@ from onyx.server.features.build.sandbox.event_schema import ToolCallStart
 from onyx.server.features.build.sandbox.sse import SSEKeepalive
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.features.build.session.streaming import BuildStreamingState
-from tests.external_dependency_unit.craft.stubs import StubSandboxManager
+from tests.common.craft.stubs import StubSandboxManager
 
 
 def _text_chunk(text: str) -> AgentMessageChunk:
@@ -386,6 +386,46 @@ class TestStreamingPersistence:
             for m in messages
             if (m.message_metadata or {}).get("type") == "tool_call_progress"
             and (m.message_metadata or {}).get("status") == "completed"
+        ]
+        assert len(tool_rows) == 1
+        assert tool_rows[0].message_metadata["toolCallId"] == "tc-1"
+
+    def test_failed_tool_call_persisted(
+        self,
+        db_session: Session,
+        test_user: User,
+        build_session: BuildSession,
+        sandbox: Callable[..., Sandbox],
+        session_manager_with_stub: SessionManager,
+        stub_sandbox_manager: StubSandboxManager,
+        tenant_context: None,  # noqa: ARG002
+    ) -> None:
+        """``ToolCallProgress`` with status='failed' → one row, so failed
+        tool calls survive session reload."""
+        sandbox(user=test_user)
+        stub_sandbox_manager.send_message_events = [
+            _tool_call_progress(
+                "tc-1",
+                "Bash",
+                status="failed",
+                raw_output={"output": "ls: cannot access '/x': No such file"},
+            ),
+            _prompt_response(),
+        ]
+        _drive_persisted_turn(
+            db_session=db_session,
+            mgr=session_manager_with_stub,
+            build_session=build_session,
+            user=test_user,
+            content="run it",
+        )
+
+        messages = get_session_messages(build_session.id, db_session)
+        tool_rows = [
+            m
+            for m in messages
+            if (m.message_metadata or {}).get("type") == "tool_call_progress"
+            and (m.message_metadata or {}).get("status") == "failed"
         ]
         assert len(tool_rows) == 1
         assert tool_rows[0].message_metadata["toolCallId"] == "tc-1"

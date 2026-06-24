@@ -11,10 +11,17 @@ import { StatusBar } from "expo-status-bar";
 import * as SplashScreen from "expo-splash-screen";
 import { vars } from "nativewind";
 import { varsLight, varsDark } from "@onyx-ai/shared/native";
+import { PortalHost } from "@rn-primitives/portal";
 
-import { persister, persistMaxAge, queryClient } from "@/query/client";
+import {
+  dehydrateOptions,
+  persister,
+  persistMaxAge,
+  queryClient,
+} from "@/query/client";
 import { bindAppStateFocus } from "@/query/focus";
 import { bindOnlineManager } from "@/query/online";
+import { SidebarProvider } from "@/components/sidebar";
 
 // Show the native Onyx splash until the first frame is ready, then reveal the app.
 SplashScreen.preventAutoHideAsync();
@@ -37,10 +44,11 @@ export default function RootLayout() {
     const unbindOnline = bindOnlineManager();
     const unbindFocus = bindAppStateFocus();
 
-    // No async init yet, so hide on the first render.
-    // TODO(Subash-Mohan): once useFonts lands, gate this behind a readiness flag
-    // (return null until ready) so text never flashes in the system font before
-    // custom fonts load.
+    // No async init to await before the first frame. Custom fonts (Hanken Grotesk,
+    // DM Mono, from the @expo-google-fonts/* packages) are embedded into the native
+    // binary at build time via the expo-font config plugin (see app.json), so they're
+    // registered before React mounts — no runtime useFonts / readiness gate is needed
+    // and text never flashes in the system font. Hide the splash on the first render.
     void SplashScreen.hideAsync();
 
     return () => {
@@ -54,10 +62,21 @@ export default function RootLayout() {
       <SafeAreaProvider>
         <PersistQueryClientProvider
           client={queryClient}
-          persistOptions={{ persister, maxAge: persistMaxAge }}
+          persistOptions={{
+            persister,
+            maxAge: persistMaxAge,
+            dehydrateOptions,
+          }}
         >
-          <StatusBar style="auto" />
-          <Stack screenOptions={{ headerShown: false }} />
+          {/* SidebarProvider owns the shared open/closed (folded) state so any screen
+              can open the sidebar and the portalled overlay can read it. PortalHost is
+              the last child of the themed root, so the overlay renders above all screens
+              while still inheriting the vars() theme + safe-area insets. */}
+          <SidebarProvider>
+            <StatusBar style="auto" />
+            <Stack screenOptions={{ headerShown: false }} />
+            <PortalHost />
+          </SidebarProvider>
         </PersistQueryClientProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

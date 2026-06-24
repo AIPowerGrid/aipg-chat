@@ -49,6 +49,9 @@ interface ContentMdProps {
   /** Optional description text below the title. */
   description?: string | RichStr;
 
+  /** Clamp the description to N lines. Maps to Text's maxLines prop. */
+  descriptionMaxLines?: number;
+
   /** Enable inline editing of the title. */
   editable?: boolean;
 
@@ -66,6 +69,9 @@ interface ContentMdProps {
 
   /** Tag rendered beside the title. */
   tag?: TagProps;
+
+  /** Clamp the title to N lines with ellipsis. Omit to wrap freely. */
+  titleMaxLines?: number;
 
   /** Size preset. Default: `"main-ui"`. */
   sizePreset?: ContentMdSizePreset;
@@ -129,11 +135,13 @@ function ContentMd({
   icon: Icon,
   title,
   description,
+  descriptionMaxLines,
   editable,
   onTitleChange,
   suffix,
   auxIcon,
   tag,
+  titleMaxLines,
   sizePreset = "main-ui",
   ref,
 }: ContentMdProps) {
@@ -210,7 +218,7 @@ function ContentMd({
             <Text
               font={config.titleFont}
               color="inherit"
-              maxLines={1}
+              maxLines={titleMaxLines}
               title={toPlainString(title)}
               onClick={editable ? startEditing : undefined}
             >
@@ -270,7 +278,12 @@ function ContentMd({
           className="opal-content-md-description"
           style={Icon ? { paddingLeft: config.descriptionIndent } : undefined}
         >
-          <Text font="secondary-body" color="text-03" as="p">
+          <Text
+            font="secondary-body"
+            color="text-03"
+            as="p"
+            maxLines={descriptionMaxLines}
+          >
             {description}
           </Text>
         </div>

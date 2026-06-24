@@ -58,9 +58,9 @@ from onyx.server.features.build.configs import SANDBOX_PROXY_NAMESPACE
 from onyx.server.features.build.configs import SANDBOX_PROXY_PORT
 from onyx.server.features.build.configs import SandboxBackend
 from onyx.utils.logger import setup_logger
+from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE
 from shared_configs.contextvars import CURRENT_TENANT_ID_CONTEXTVAR
-from tests.external_dependency_unit.constants import TEST_TENANT_ID
-from tests.external_dependency_unit.craft._test_helpers import action_entry
+from tests.common.craft.payloads import action_entry
 from tests.external_dependency_unit.craft.conftest import pod_exec
 from tests.external_dependency_unit.craft.conftest import pod_exec_async
 from tests.external_dependency_unit.craft.conftest import wait_for_pod_exec_output
@@ -99,7 +99,7 @@ def _seed_slack_external_app() -> Generator[None, None, None]:
     Slack row already exists.
     """
     SqlEngine.init_engine(pool_size=10, max_overflow=5)
-    token = CURRENT_TENANT_ID_CONTEXTVAR.set(TEST_TENANT_ID)
+    token = CURRENT_TENANT_ID_CONTEXTVAR.set(POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE)
     try:
         with get_session_with_current_tenant() as session:
             if get_built_in_external_app(session, ExternalAppType.SLACK) is None:
@@ -622,7 +622,7 @@ def test_sse_merger_emits_approval_requested_packet(
 
     pending = _wait_for_pending_approval(db_session, session_id)
 
-    cache = get_cache_backend(tenant_id=TEST_TENANT_ID)
+    cache = get_cache_backend(tenant_id=POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE)
     popped = approval_cache.pop_announcement(session_id, timeout_s=5, cache=cache)
     assert popped == pending.approval_id, (
         f"announce list should contain the parked approval id "
@@ -645,7 +645,7 @@ def test_body_too_large_returns_403(
     gated_session: tuple[User, UUID, str],
     db_session: Session,
 ) -> None:
-    """Body exceeding ``PARSER_MAX_BODY_BYTES`` (1 MiB) is rejected pre-match.
+    """Body exceeding ``PARSER_MAX_BODY_BYTES`` (32 MiB) is rejected pre-match.
 
     The gate rejects before the matcher runs, so no approval row is minted.
     """
@@ -653,16 +653,16 @@ def test_body_too_large_returns_403(
 
     output_path = f"/tmp/curl_oversize_{uuid4().hex[:8]}"
     body_path = f"/tmp/body_oversize_{uuid4().hex[:8]}.json"
-    # Generate the 1.5 MiB body in-pod -- inlining it through pod_exec_async
-    # would push the full payload into the apiserver's exec URL query params and
-    # trip a 431 Request Header Fields Too Large at the websocket handshake.
+    # Generate a 33 MiB body in-pod -- inlining it through pod_exec_async would
+    # push the full payload into the apiserver's exec URL query params and trip a
+    # 431 Request Header Fields Too Large at the websocket handshake.
     pod_exec(
         k8s_client,
         pod_name,
         SANDBOX_NAMESPACE,
         (
             f'printf \'{{"channel":"#general","text":"\' > {body_path} && '
-            f'head -c 1572864 /dev/zero | tr "\\0" x >> {body_path} && '
+            f'head -c 34603008 /dev/zero | tr "\\0" x >> {body_path} && '
             f"printf '\"}}' >> {body_path}"
         ),
     )

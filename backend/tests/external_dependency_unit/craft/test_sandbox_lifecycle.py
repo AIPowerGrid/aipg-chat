@@ -2,7 +2,7 @@
 
 DB-bound tests that pin the sandbox state machine: PROVISIONING → RUNNING,
 provision failures rolling back the row, idempotent provisioning, the
-health-check failure -> re-provision recovery path, the ``get_idle_sandboxes``
+health-check failure -> re-provision recovery path, the idle-selection
 query shape, and the Redis lock that serializes concurrent provision
 attempts for the same user.
 
@@ -21,28 +21,29 @@ import pytest
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
+from onyx.background.celery.tasks.build.tasks import is_sandbox_idle
 from onyx.db.enums import BuildSessionStatus
 from onyx.db.enums import SandboxStatus
 from onyx.db.models import BuildSession
 from onyx.db.models import Sandbox
 from onyx.db.models import User
 from onyx.redis.redis_pool import get_redis_client
-from onyx.server.features.build.api.sessions_api import restore_session
 from onyx.server.features.build.db.sandbox import create_sandbox__no_commit
 from onyx.server.features.build.db.sandbox import create_snapshot__no_commit
-from onyx.server.features.build.db.sandbox import get_idle_sandboxes
+from onyx.server.features.build.db.sandbox import get_running_sandboxes
 from onyx.server.features.build.sandbox.models import FilesystemEntry
 from onyx.server.features.build.sandbox.models import SandboxInfo
+from onyx.server.features.build.session.api import restore_session
 from onyx.server.features.build.session.manager import SessionManager
 from onyx.server.features.build.session.sandbox_lifecycle import provision_sandbox
-from tests.external_dependency_unit.constants import TEST_TENANT_ID
-from tests.external_dependency_unit.craft._test_helpers import default_llm_config
-from tests.external_dependency_unit.craft._test_helpers import make_sandbox
-from tests.external_dependency_unit.craft._test_helpers import make_user
-from tests.external_dependency_unit.craft.conftest import (
+from shared_configs.configs import POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE
+from tests.common.craft.payloads import default_llm_config
+from tests.common.craft.stubs import StubSandboxManager
+from tests.external_dependency_unit.craft.db_helpers import make_sandbox
+from tests.external_dependency_unit.craft.db_helpers import make_user
+from tests.external_dependency_unit.craft.redis_helpers import (
     assert_lock_serializes_two_threads,
 )
-from tests.external_dependency_unit.craft.stubs import StubSandboxManager
 
 
 class TestProvisionTransitions:
@@ -72,7 +73,7 @@ class TestProvisionTransitions:
             sandbox=sandbox,
             user=test_user,
             user_id=test_user.id,
-            tenant_id=TEST_TENANT_ID,
+            tenant_id=POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE,
             all_llm_configs=[default_llm_config()],
         )
         db_session.commit()
@@ -106,7 +107,7 @@ class TestProvisionFailureRollback:
                 sandbox=sandbox,
                 user=test_user,
                 user_id=test_user.id,
-                tenant_id=TEST_TENANT_ID,
+                tenant_id=POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE,
                 all_llm_configs=[default_llm_config()],
             )
 
@@ -247,7 +248,7 @@ class TestHealthCheckFailureRecovery:
 
         # restore_session reads ``get_sandbox_manager`` from sessions_api.
         monkeypatch.setattr(
-            "onyx.server.features.build.api.sessions_api.get_sandbox_manager",
+            "onyx.server.features.build.session.api.get_sandbox_manager",
             lambda: stub_sandbox_manager,
         )
 
@@ -265,7 +266,7 @@ class TestHealthCheckFailureRecovery:
         assert refreshed.status == SandboxStatus.RUNNING
         assert {
             "sandbox_id": row.id,
-            "tenant_id": TEST_TENANT_ID,
+            "tenant_id": POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE,
             "timeout_seconds": 30.0,
         } in stub_sandbox_manager.create_opencode_history_snapshot_payloads
 
@@ -302,7 +303,7 @@ class TestRestoreFailureRecovery:
         create_snapshot__no_commit(
             db_session,
             session_id,
-            f"{TEST_TENANT_ID}/snapshots/{session_id}/snap.tar.gz",
+            f"{POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE}/snapshots/{session_id}/snap.tar.gz",
             size_bytes=123,
         )
         db_session.commit()
@@ -319,7 +320,7 @@ class TestRestoreFailureRecovery:
         stub_sandbox_manager.cleanup_session_workspace_silent = True
 
         monkeypatch.setattr(
-            "onyx.server.features.build.api.sessions_api.get_sandbox_manager",
+            "onyx.server.features.build.session.api.get_sandbox_manager",
             lambda: stub_sandbox_manager,
         )
 
@@ -421,9 +422,10 @@ class TestIdleCleanupSelection:
         ) - datetime.timedelta(hours=2)
         db_session.commit()
 
-        idle = get_idle_sandboxes(db_session, idle_threshold_seconds=3600)
-
-        idle_ids = {s.id for s in idle}
+        now = datetime.datetime.now(datetime.timezone.utc)
+        idle_ids = {
+            s.id for s in get_running_sandboxes(db_session) if is_sandbox_idle(s, now)
+        }
         assert row.id in idle_ids
 
     def test_idle_cleanup_excludes_sandbox_within_threshold(
@@ -439,9 +441,11 @@ class TestIdleCleanupSelection:
         ) - datetime.timedelta(minutes=30)
         db_session.commit()
 
-        idle = get_idle_sandboxes(db_session, idle_threshold_seconds=3600)
-
-        assert row.id not in {s.id for s in idle}
+        now = datetime.datetime.now(datetime.timezone.utc)
+        idle_ids = {
+            s.id for s in get_running_sandboxes(db_session) if is_sandbox_idle(s, now)
+        }
+        assert row.id not in idle_ids
 
 
 # NOTE: ``test_idle_cleanup_marks_sandbox_sleeping_and_sessions_idle`` was
@@ -466,7 +470,9 @@ class TestConcurrentProvisionLock:
         # Real Redis lock under the same key shape used by sessions_api.py
         # (``session_create:{user_id}``). Two threads race for the lock; the
         # second observes that the first held it and therefore had to wait.
-        redis_client = get_redis_client(tenant_id=TEST_TENANT_ID)
+        redis_client = get_redis_client(
+            tenant_id=POSTGRES_DEFAULT_SCHEMA_STANDARD_VALUE
+        )
         lock_key = f"session_create:{test_user.id}"
 
         assert_lock_serializes_two_threads(redis_client, lock_key)

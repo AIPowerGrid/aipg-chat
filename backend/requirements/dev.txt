@@ -1185,13 +1185,13 @@ numpy==2.4.1 \
     #   matplotlib
     #   pandas-stubs
     #   voyageai
-onyx-devtools==0.8.1 \
-    --hash=sha256:428b2e94c6b2a0d7a713282f77116969620eada11f9a4c186e92c4255242ab3f \
-    --hash=sha256:6102f3b2aa4b04dd2f35e9a9840376997447d69ee2053a28ee2d673fc71f1532 \
-    --hash=sha256:6e3ff3d6e0bb537d76466710a2ac2d865b51a473601a65920895c15fe50caba7 \
-    --hash=sha256:ad925717d1f33e952d2804a710b73548147cf5e220454c39ef80b245ad32a5d8 \
-    --hash=sha256:d464479a4b36488451a83602fb45cd2108cbd43f0b0a6dc8c6425b1219a71462 \
-    --hash=sha256:dfda1ed37e5c40f1cc73d9bfd50554cd3f4ca834cd34a8d8db68b5dc545fc6d0
+onyx-devtools==0.8.3 \
+    --hash=sha256:00fda9e25dc797045f1af50c06afe3004fbdb17cddf550ee7e114dff19cd42a4 \
+    --hash=sha256:02a63344bf582ae6b5057d1df7ec693ae11e32c5d4be671214d0d4a555f15859 \
+    --hash=sha256:0e1bf2f0d04a3c15be8c2e82b8183ec8447cd6af262b92c1b6652974e13708ae \
+    --hash=sha256:5f93a61ca0b64298bee3e4c460dff053f890aa2748847410b712eaa8a7a6f6d0 \
+    --hash=sha256:6a60fbb0494c72baa6483cbb5a77a385cfc7a891ebbe71ce253c410455b3ccb0 \
+    --hash=sha256:75ae47162dc322a2be58da2d58a2a3a28176ce5dd6b838ad29cfd8b568187947
 openai==2.38.0 \
     --hash=sha256:798694c6cf74145541fda94325b6f8f72d8e1fd0262cc137c8d728177a6a4ce3 \
     --hash=sha256:ec6661c57b2dcc47414a767e6e3335c7ed3d19c9696999283a3c82e95c756a3c
@@ -1855,9 +1855,9 @@ stack-data==0.6.3 \
     --hash=sha256:836a778de4fec4dcd1dcd89ed8abff8a221f58308462e1c4aa2a3cf30148f0b9 \
     --hash=sha256:d5558e0c25a4cb0853cddad3d77da9891a08cb85dd9f9f91b9f8cd66e511e695
     # via ipython
-starlette==1.0.1 \
-    --hash=sha256:512399c5f1de7fac99c88572212ded9ddeddef2fb32afa82d724000e88b38f4f \
-    --hash=sha256:7c0e69b2ee1c848bd54669d908500117a3ee13de603a21427e5c6fc1adf98dcd
+starlette==1.3.1 \
+    --hash=sha256:05d0213193f2fbaae60e2ecb593b4add4262ad4e46536b54abe36f11a71724e0 \
+    --hash=sha256:c7372aae11c3c3f26a42df7bd626cec2f47d03483d261d369516a615a53714c6
     # via
     #   fastapi
     #   prometheus-fastapi-instrumentator
@@ -2073,9 +2073,9 @@ urllib3==2.7.0 \
     #   sentry-sdk
     #   types-docker
     #   types-requests
-uvicorn==0.35.0 \
-    --hash=sha256:197535216b25ff9b785e29a0b79199f55222193d47f820816e7da751e9bc8d4a \
-    --hash=sha256:bc662f087f7cf2ce11a1d7fd70b90c9f98ef2e2831556dd078d131b96cc94a01
+uvicorn==0.49.0 \
+    --hash=sha256:ba3d14c3ee7e41c6c654c46c9eb489d33213cdd30aa1696eab1374337c13f68f \
+    --hash=sha256:ebf4271aa580d9de97f93192d4595176df6e91f9aae919ca73e4fc07df1e66a3
     # via onyx
 virtualenv==20.36.1 \
     --hash=sha256:575a8d6b124ef88f6f51d56d656132389f961062a9177016a50e4f507bbcc19f \
