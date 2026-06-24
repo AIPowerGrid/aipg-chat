@@ -15,8 +15,8 @@ export interface LogoProps {
   folded?: boolean;
   size?: number;
   className?: string;
-  // Always render the real Onyx logo, ignoring enterprise white-label settings
-  // (custom logo / application name). Used by Onyx-branded surfaces like Craft.
+  // Always render the real AI Power Grid logo, ignoring enterprise white-label settings
+  // (custom logo / application name). Used by AI Power Grid-branded surfaces like Craft.
   onyxBranded?: boolean;
 }
 
@@ -90,7 +90,7 @@ export default function Logo({
                   className={"line-clamp-1 truncate"}
                   nowrap
                 >
-                  Powered by Onyx
+                  Powered by AI Power Grid
                 </Text>
               )}
           </div>

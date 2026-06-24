@@ -20,7 +20,7 @@ export default function AuthFlowContainer({
         <div className="text-sm mt-6 text-center w-full text-text-03 mainUiBody mx-auto">
           {footerContent ?? (
             <>
-              New to Onyx?{" "}
+              New to AI Power Grid?{" "}
               <Link
                 href="/auth/signup"
                 className="text-text-05 mainUiAction underline transition-colors duration-200"

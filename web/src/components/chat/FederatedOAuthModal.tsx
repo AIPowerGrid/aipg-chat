@@ -118,7 +118,7 @@ export default function FederatedOAuthModal() {
   }
 
   const applicationName =
-    settings?.enterpriseSettings?.application_name || "Onyx";
+    settings?.enterpriseSettings?.application_name || "AI Power Grid";
 
   return (
     <Modal open>

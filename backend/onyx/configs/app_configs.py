@@ -1245,6 +1245,27 @@ AUTO_LLM_UPDATE_INTERVAL_SECONDS = int(
 )
 
 #####
+# AIPG fork — AI Power Grid dynamic provider
+# Periodically syncs the grid's live OpenAI-compatible /v1/models into the chat
+# model dropdown. Isolated here (env-driven) to keep the fork rebasable onto Onyx.
+#####
+# Master switch for the grid model sync background task.
+AIPG_GRID_SYNC_ENABLED = (
+    os.environ.get("AIPG_GRID_SYNC_ENABLED", "false").lower() == "true"
+)
+# Display name of the LLMProvider row we manage (must match the configured provider).
+AIPG_GRID_PROVIDER_NAME = os.environ.get("AIPG_GRID_PROVIDER_NAME", "AI Power Grid")
+# Grid's OpenAI-compatible base URL (e.g. "https://api.aipowergrid.io/v1"). When the
+# provider does not yet exist, the sync task seeds it from these values.
+AIPG_GRID_API_BASE = os.environ.get("AIPG_GRID_API_BASE") or None
+# API key for listing models + inference. Optional if the grid allows anonymous listing.
+AIPG_GRID_API_KEY = os.environ.get("AIPG_GRID_API_KEY") or None
+# How often to refresh the grid model list (in seconds).
+AIPG_GRID_SYNC_INTERVAL_SECONDS = int(
+    os.environ.get("AIPG_GRID_SYNC_INTERVAL_SECONDS", 300)  # 5 minutes
+)
+
+#####
 # Enterprise Edition Configs
 #####
 # NOTE: this should only be enabled if you have purchased an enterprise license.

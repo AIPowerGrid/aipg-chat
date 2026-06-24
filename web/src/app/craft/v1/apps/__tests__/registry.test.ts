@@ -73,7 +73,7 @@ describe("availableBuiltInDescriptors", () => {
     ]);
   });
 
-  it("hides Onyx-managed (cloud, pre-provisioned) built-ins, which are always configured", () => {
+  it("hides AI Power Grid-managed (cloud, pre-provisioned) built-ins, which are always configured", () => {
     const available = availableBuiltInDescriptors(ALL_DESCRIPTORS, [
       configuredApp("GMAIL", { is_onyx_managed: true }),
     ]);

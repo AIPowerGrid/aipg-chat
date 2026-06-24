@@ -40,7 +40,7 @@ export default function ExternalAppsPage({
       <SettingsLayouts.Header
         icon={SvgPlug}
         title="External Apps"
-        description="Connect third-party integrations so users in your org can authorize them with their personal accounts in Onyx Craft."
+        description="Connect third-party integrations so users in your org can authorize them with their personal accounts in AI Power Grid Craft."
         rightChildren={
           onBack ? (
             <div className="flex items-center gap-2">
@@ -268,7 +268,7 @@ function ConfiguredAppCard({
           >
             {isMutating ? "…" : app.enabled ? "Disable" : "Enable"}
           </Button>
-          {/* Onyx-managed built-ins (cloud) can't be deleted — only disabled. */}
+          {/* AI Power Grid-managed built-ins (cloud) can't be deleted — only disabled. */}
           {!app.is_onyx_managed && (
             <Button
               prominence="tertiary"

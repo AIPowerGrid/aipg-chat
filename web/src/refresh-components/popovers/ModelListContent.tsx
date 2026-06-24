@@ -17,6 +17,9 @@ import {
 import { cn } from "@opal/utils";
 import { Interactive } from "@opal/core";
 import { ContentAction } from "@opal/layouts";
+import { SvgActivity } from "@opal/icons";
+import useGridModelStatus from "@/hooks/useGridModelStatus";
+import { GridModelStatus } from "@/lib/grid/interfaces";
 
 export interface ModelListContentProps {
   llmProviders: LLMProviderDescriptor[] | undefined;
@@ -44,6 +47,23 @@ export default function ModelListContent({
   const [searchQuery, setSearchQuery] = useState("");
   const internalScrollRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = externalScrollRef ?? internalScrollRef;
+
+  // Live AI Power Grid per-model status (worker count + recent t/s). Used to
+  // annotate each model row with how many workers serve it + a hover summary.
+  const { models: gridModels } = useGridModelStatus();
+  const gridByModel = useMemo(() => {
+    const map = new Map<string, GridModelStatus>();
+    for (const m of gridModels) map.set(m.name.toLowerCase(), m);
+    return map;
+  }, [gridModels]);
+
+  const gridStatusFor = (modelName: string): GridModelStatus | undefined => {
+    const lower = modelName.toLowerCase();
+    return (
+      gridByModel.get(lower) ||
+      gridModels.find((m) => lower.endsWith(m.name.toLowerCase()))
+    );
+  };
 
   const llmOptions = useMemo(
     () => buildLlmOptions(llmProviders, currentModelName),
@@ -112,8 +132,27 @@ export default function ModelListContent({
     const capabilities: string[] = [];
     if (option.supportsReasoning) capabilities.push("Reasoning");
     if (option.supportsImageInput) capabilities.push("Vision");
-    const description =
-      capabilities.length > 0 ? capabilities.join(", ") : undefined;
+
+    // Live grid status for this model: worker count + recent throughput.
+    const grid = gridStatusFor(option.modelName);
+    const descParts = [...capabilities];
+    if (grid) {
+      descParts.push(`${grid.count} ${grid.count === 1 ? "worker" : "workers"}`);
+      if (grid.tokens_per_s != null) descParts.push(`${grid.tokens_per_s} t/s`);
+    }
+    const description = descParts.length > 0 ? descParts.join(" · ") : undefined;
+
+    // Hover summary for the worker-count badge.
+    const gridTooltip = grid
+      ? [
+          `${grid.count} online ${grid.count === 1 ? "worker" : "workers"}`,
+          grid.tokens_per_s != null ? `${grid.tokens_per_s} tokens/s` : null,
+          grid.avg_ttft_s != null ? `${grid.avg_ttft_s}s to first token` : null,
+          grid.avg_latency_s != null ? `${grid.avg_latency_s}s avg latency` : null,
+        ]
+          .filter(Boolean)
+          .join("\n")
+      : undefined;
 
     return (
       <LineItemButton
@@ -125,11 +164,31 @@ export default function ModelListContent({
         description={description}
         onClick={() => onSelect(option)}
         rightChildren={
-          selected ? (
-            <div className="flex h-5 items-center">
-              <SvgCheck className="text-action-link-05" size={16} />
+          <div className="flex h-5 items-center gap-2">
+            {grid && (
+              <div
+                title={gridTooltip}
+                className={cn(
+                  "flex items-center gap-1 rounded px-1.5 py-0.5",
+                  grid.count > 0
+                    ? "bg-background-neutral-03 text-text-03"
+                    : "bg-background-neutral-02 text-text-04"
+                )}
+              >
+                <SvgActivity size={12} />
+                <Text font="secondary-body" color="text-03">
+                  {String(grid.count)}
+                </Text>
+              </div>
+            )}
+            {/* Always reserve the checkmark's slot so the badge column lines up
+                across selected and non-selected rows. */}
+            <div className="w-4 flex items-center justify-center shrink-0">
+              {selected && (
+                <SvgCheck className="text-action-link-05" size={16} />
+              )}
             </div>
-          ) : null
+          </div>
         }
         sizePreset="main-ui"
         rounding="sm"

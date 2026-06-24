@@ -35,6 +35,7 @@ import FrostedDiv from "@/refresh-components/FrostedDiv";
 import { Popover, PopoverMenu } from "@opal/components";
 import { PopoverSearchInput } from "@/sections/sidebar/ChatButton";
 import SimplePopover from "@/refresh-components/SimplePopover";
+import GridStatusChip from "@/sections/grid/GridStatusChip";
 import { Button, LineItemButton, OpenButton } from "@opal/components";
 import { useSidebarState } from "@opal/layouts";
 import useScreenSize from "@/hooks/useScreenSize";
@@ -369,7 +370,8 @@ function HeaderInner({
           - share button
           - more-options buttons
         */}
-        <div className="flex flex-1 justify-end items-center h-[3.3rem]">
+        <div className="flex flex-1 justify-end items-center gap-2 h-[3.3rem]">
+          {appFocus.isChat() && <GridStatusChip />}
           {appFocus.isChat() && currentChatSession && (
             <FrostedDiv className="flex shrink flex-row items-center">
               <Button
@@ -446,7 +448,7 @@ function Footer() {
 
   const customFooterContent =
     settings?.enterpriseSettings?.custom_lower_disclaimer_content ||
-    `[Onyx ${
+    `[AI Power Grid ${
       settings?.webVersion || "dev"
     }](https://www.onyx.app/) - ${APP_SLOGAN}`;
 

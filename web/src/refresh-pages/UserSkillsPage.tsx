@@ -135,7 +135,7 @@ export default function UserSkillsPage() {
               <div className="pt-2">
                 <Text as="p" font="secondary-body" color="text-03">
                   Skills are managed by org admins. To request a new custom
-                  skill, talk to your Onyx admin.
+                  skill, talk to your AI Power Grid admin.
                 </Text>
               </div>
             )}

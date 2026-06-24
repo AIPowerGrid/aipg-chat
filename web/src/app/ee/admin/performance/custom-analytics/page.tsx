@@ -15,7 +15,7 @@ function Main() {
         <div className="mt-4">
           <Callout type="danger" title="Custom Analytics is not enabled.">
             To set up custom analytics scripts, please work with the team who
-            setup Onyx in your team to set the{" "}
+            setup AI Power Grid in your team to set the{" "}
             <i>CUSTOM_ANALYTICS_SECRET_KEY</i> environment variable.
           </Callout>
         </div>
@@ -27,7 +27,7 @@ function Main() {
     <div>
       <Text as="p">
         {
-          "This allows you to bring your own analytics tool to Onyx! Copy the Web snippet from your analytics provider into the box below, and we'll start sending usage events."
+          "This allows you to bring your own analytics tool to AI Power Grid! Copy the Web snippet from your analytics provider into the box below, and we'll start sending usage events."
         }
       </Text>
       <Spacer rem={2} />

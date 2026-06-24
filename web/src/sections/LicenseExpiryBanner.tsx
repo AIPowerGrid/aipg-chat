@@ -27,15 +27,15 @@ function buildCopy(
 
   if (stage === "t_30d") {
     return {
-      title: `Your Onyx license expires on ${expiresDisplay}.`,
+      title: `Your AI Power Grid license expires on ${expiresDisplay}.`,
       description:
-        "Renewal is due in approximately 30 days. Contact your Onyx representative to renew.",
+        "Renewal is due in approximately 30 days. Contact your AI Power Grid representative to renew.",
       variant: "warning",
     };
   }
   if (stage === "t_14d") {
     return {
-      title: `Your Onyx license expires on ${expiresDisplay}.`,
+      title: `Your AI Power Grid license expires on ${expiresDisplay}.`,
       description:
         "Renewal is due in approximately 2 weeks. Complete renewal soon to avoid service interruption.",
       variant: "warning",
@@ -43,7 +43,7 @@ function buildCopy(
   }
   if (stage === "t_1d") {
     return {
-      title: `Your Onyx license expires tomorrow (${expiresDisplay}).`,
+      title: `Your AI Power Grid license expires tomorrow (${expiresDisplay}).`,
       description:
         "Renewal is due within 24 hours. Renew now to avoid service interruption.",
       variant: "error",
@@ -51,7 +51,7 @@ function buildCopy(
   }
   if (stage === "grace") {
     return {
-      title: `Your Onyx license expired on ${expiresDisplay}.`,
+      title: `Your AI Power Grid license expired on ${expiresDisplay}.`,
       description: `${graceDaysRemaining} grace day${
         graceDaysRemaining === 1 ? "" : "s"
       } remaining before access is gated. Renew now.`,

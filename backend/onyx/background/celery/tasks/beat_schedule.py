@@ -4,6 +4,8 @@ from typing import Any
 
 from celery.schedules import crontab
 
+from onyx.configs.app_configs import AIPG_GRID_SYNC_ENABLED
+from onyx.configs.app_configs import AIPG_GRID_SYNC_INTERVAL_SECONDS
 from onyx.configs.app_configs import AUTO_LLM_CONFIG_URL
 from onyx.configs.app_configs import AUTO_LLM_UPDATE_INTERVAL_SECONDS
 from onyx.configs.app_configs import DISABLE_OPENSEARCH_MIGRATION_TASK
@@ -233,6 +235,20 @@ if AUTO_LLM_CONFIG_URL:
             "name": "check-for-auto-llm-update",
             "task": OnyxCeleryTask.CHECK_FOR_AUTO_LLM_UPDATE,
             "schedule": timedelta(seconds=AUTO_LLM_UPDATE_INTERVAL_SECONDS),
+            "options": {
+                "priority": OnyxCeleryPriority.LOW,
+                "expires": BEAT_EXPIRES_DEFAULT,
+            },
+        }
+    )
+
+# AIPG fork: refresh AI Power Grid models from its live /v1/models endpoint
+if AIPG_GRID_SYNC_ENABLED:
+    beat_task_templates.append(
+        {
+            "name": "sync-grid-models",
+            "task": OnyxCeleryTask.SYNC_GRID_MODELS,
+            "schedule": timedelta(seconds=AIPG_GRID_SYNC_INTERVAL_SECONDS),
             "options": {
                 "priority": OnyxCeleryPriority.LOW,
                 "expires": BEAT_EXPIRES_DEFAULT,

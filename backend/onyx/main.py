@@ -30,6 +30,7 @@ from onyx.auth.schemas import UserCreate
 from onyx.auth.schemas import UserRead
 from onyx.auth.schemas import UserUpdate
 from onyx.auth.users import auth_backend
+from onyx.auth.wallet import router as wallet_router
 from onyx.auth.users import create_onyx_oauth_router
 from onyx.auth.users import fastapi_users
 from onyx.auth.users import verify_user_auth_secret
@@ -124,6 +125,7 @@ from onyx.server.manage.image_generation.api import (
 )
 from onyx.server.manage.llm.api import admin_router as llm_admin_router
 from onyx.server.manage.llm.api import basic_router as llm_router
+from onyx.server.manage.llm.grid_status import basic_router as grid_status_router
 from onyx.server.manage.opensearch_migration.api import (
     admin_router as opensearch_migration_admin_router,
 )
@@ -497,6 +499,7 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     register_onyx_exception_handlers(application)
 
     include_router_with_global_prefix_prepended(application, password_router)
+    include_router_with_global_prefix_prepended(application, wallet_router)
     include_router_with_global_prefix_prepended(application, chat_router)
     include_router_with_global_prefix_prepended(application, query_router)
     include_router_with_global_prefix_prepended(application, document_router)
@@ -539,6 +542,7 @@ def get_application(lifespan_override: Lifespan | None = None) -> FastAPI:
     include_router_with_global_prefix_prepended(application, llm_admin_router)
     include_router_with_global_prefix_prepended(application, kg_admin_router)
     include_router_with_global_prefix_prepended(application, llm_router)
+    include_router_with_global_prefix_prepended(application, grid_status_router)
     include_router_with_global_prefix_prepended(
         application, code_interpreter_admin_router
     )

@@ -20,8 +20,8 @@ const PUBLIC_ROUTES = ["/auth", "/anonymous", "/_next", "/api"];
 // into the build), so WEB_FRAME_PROTECTION_ENABLED is read at runtime and
 // applies on restart without a rebuild.
 //
-// frame-ancestors controls who may embed Onyx in an <iframe>. On by default;
-// WEB_FRAME_PROTECTION_ENABLED=false drops it so any origin may frame Onyx.
+// frame-ancestors controls who may embed AI Power Grid in an <iframe>. On by default;
+// WEB_FRAME_PROTECTION_ENABLED=false drops it so any origin may frame AI Power Grid.
 // chrome-extension:/moz-extension: are app-wide (the extension iframes every
 // route, not just /nrf) and cover both Chromium and Firefox builds.
 // X-Frame-Options is omitted: it can't express the extension allowance and
@@ -90,7 +90,9 @@ export async function proxy(request: NextRequest) {
     const anonymousCookie = request.cookies.get(ANONYMOUS_USER_COOKIE_NAME);
 
     // Allow access if user has either a regular auth cookie or anonymous user cookie
-    if (!authCookie && !anonymousCookie) {
+    // AIPG anonymous-first: guests reach the chat (/app) without logging in;
+    // admin/connector/agents still require a session.
+    if (!authCookie && !anonymousCookie && !pathname.startsWith("/app")) {
       const loginUrl = new URL("/auth/login", request.url);
       // Preserve full URL including query params and hash for deep linking
       const fullPath = pathname + request.nextUrl.search + request.nextUrl.hash;

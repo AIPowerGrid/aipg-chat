@@ -528,7 +528,7 @@ export type StreamPacket =
   | CurrentModeUpdatePacket
   | PromptResponsePacket
   | SandboxErrorPacket
-  // Custom Onyx packets
+  // Custom AI Power Grid packets
   | StepStartPacket
   | StepDeltaPacket
   | StepEndPacket

@@ -159,7 +159,7 @@ interface ModelSpecFieldsProps {
 }
 
 export function ModelSpecFields({
-  modelNameSubDescription = "Onyx will connect to this model on your self-hosted endpoint.",
+  modelNameSubDescription = "AI Power Grid will connect to this model on your self-hosted endpoint.",
 }: ModelSpecFieldsProps) {
   return (
     <>

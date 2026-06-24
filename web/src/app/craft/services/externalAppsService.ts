@@ -131,7 +131,7 @@ interface UpdateExternalAppBody {
 }
 
 /**
- * Partial update of any app (PATCH /admin/apps/{id}). For Onyx-managed built-ins
+ * Partial update of any app (PATCH /admin/apps/{id}). For AI Power Grid-managed built-ins
  * the gateway-config fields are ignored server-side (only enablement + policies
  * apply); a custom app's bundle bytes go through {@link replaceCustomAppBundle}.
  */

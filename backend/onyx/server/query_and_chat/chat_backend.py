@@ -209,7 +209,7 @@ def get_user_chat_sessions(
 @router.put("/update-chat-session-temperature")
 def update_chat_session_temperature(
     update_thread_req: UpdateChatSessionTemperatureRequest,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> None:
     chat_session = get_chat_session_by_id(
@@ -249,7 +249,7 @@ def update_chat_session_temperature(
 @router.put("/update-chat-session-model")
 def update_chat_session_model(
     update_thread_req: UpdateChatSessionThreadRequest,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> None:
     chat_session = get_chat_session_by_id(
@@ -407,7 +407,7 @@ def create_new_chat_session(
 def rename_chat_session(
     rename_req: ChatRenameRequest,
     request: Request,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
 ) -> RenameChatSessionResponse:
     # 3000 tokens is more than enough for a pair of messages which is enough to provide the required context for generating a
     # good name for the chat session. It's also small enough to fit on even the worst context window LLMs.
@@ -482,7 +482,7 @@ def rename_chat_session(
 def patch_chat_session(
     session_id: UUID,
     chat_session_update_req: ChatSessionUpdateRequest,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> None:
     user_id = user.id
@@ -497,7 +497,7 @@ def patch_chat_session(
 
 @router.delete("/delete-all-chat-sessions", tags=PUBLIC_API_TAGS)
 def delete_all_chat_sessions(
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> None:
     try:
@@ -510,7 +510,7 @@ def delete_all_chat_sessions(
 def delete_chat_session_by_id(
     session_id: UUID,
     hard_delete: bool | None = None,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> None:
     user_id = user.id
@@ -702,7 +702,7 @@ def handle_send_chat_message(
 @router.put("/set-message-as-latest")
 def set_message_as_latest(
     message_identifier: ChatMessageIdentifier,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> None:
     user_id = user.id
@@ -723,7 +723,7 @@ def set_message_as_latest(
 @router.put("/set-preferred-response")
 def set_preferred_response_endpoint(
     request_body: SetPreferredResponseRequest,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> None:
     """Set the preferred assistant response for a multi-model turn."""
@@ -790,7 +790,7 @@ class MaxSelectedDocumentTokens(BaseModel):
 @router.get("/max-selected-document-tokens")
 def get_max_document_tokens(
     persona_id: int,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> MaxSelectedDocumentTokens:
     try:
@@ -861,7 +861,7 @@ class SeedChatFromSlackResponse(BaseModel):
 @router.post("/seed-chat-session-from-slack")
 def seed_chat_from_slack(
     chat_seed_request: SeedChatFromSlackRequest,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> SeedChatFromSlackResponse:
     slack_chat_session_id = chat_seed_request.chat_session_id
@@ -886,7 +886,7 @@ def seed_chat_from_slack(
 def fetch_chat_file(
     file_id: str,
     request: Request,
-    user: User = Depends(require_permission(Permission.BASIC_ACCESS)),
+    user: User = Depends(require_permission(Permission.BASIC_ACCESS, allow_anonymous=True)),
     db_session: Session = Depends(get_session),
 ) -> Response:
     # For user files, we need to get the file id from the user file id

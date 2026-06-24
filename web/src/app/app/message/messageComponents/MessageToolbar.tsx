@@ -30,6 +30,7 @@ import FeedbackModal, {
 } from "@/sections/modals/FeedbackModal";
 import { Button, SelectButton } from "@opal/components";
 import TTSButton from "./TTSButton";
+import MessageGridInfo from "./MessageGridInfo";
 import { useVoiceMode } from "@/providers/VoiceModeProvider";
 import { useVoiceStatus } from "@/hooks/useVoiceStatus";
 
@@ -284,6 +285,8 @@ export default function MessageToolbar({
               }
               data-testid="AgentMessage/dislike-button"
             />
+            {currentModelName && <MessageGridInfo modelName={currentModelName} />}
+
             {ttsEnabled && (
               <TTSButton
                 text={

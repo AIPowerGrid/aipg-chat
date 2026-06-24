@@ -41,7 +41,7 @@ export default function ExternalAppsPage() {
       <SettingsLayouts.Header
         icon={SvgPlug}
         title="Apps"
-        description="Connect the tools Onyx Craft can use as context while it works."
+        description="Connect the tools AI Power Grid Craft can use as context while it works."
         rightChildren={
           isAdmin ? (
             <div className="flex items-center gap-2">

@@ -94,7 +94,7 @@ export default function SkillsPage({ onBack }: SkillsPageProps = {}) {
       <SettingsLayouts.Header
         icon={SvgBlocks}
         title="Skills"
-        description="Capability bundles the Craft agent can reach for. Built-in skills ship with Onyx; custom skills are uploaded zip bundles, gated by group grants."
+        description="Capability bundles the Craft agent can reach for. Built-in skills ship with AI Power Grid; custom skills are uploaded zip bundles, gated by group grants."
         rightChildren={
           onBack ? (
             <div className="flex items-center gap-2">

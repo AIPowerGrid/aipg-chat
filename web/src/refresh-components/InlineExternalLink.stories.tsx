@@ -16,7 +16,7 @@ type Story = StoryObj<typeof InlineExternalLink>;
 export const Default: Story = {
   args: {
     href: "https://docs.onyx.app",
-    children: "Onyx Documentation",
+    children: "AI Power Grid Documentation",
   },
 };
 
