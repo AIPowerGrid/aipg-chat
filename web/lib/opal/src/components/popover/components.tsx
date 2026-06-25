@@ -209,11 +209,17 @@ interface PopoverMenuProps {
 
   // Ref for the scrollable container (useful for programmatic scrolling)
   scrollContainerRef?: React.RefObject<HTMLDivElement | null>;
+
+  // Override the scroll area's max-height (default `max-h-80`). Opt-in so taller
+  // menus (e.g. the model picker) aren't clipped while other popovers are
+  // unchanged.
+  menuClassName?: string;
 }
 function PopoverMenu({
   children,
   footer,
   scrollContainerRef,
+  menuClassName,
 }: PopoverMenuProps) {
   if (!children) return null;
 
@@ -229,7 +235,7 @@ function PopoverMenu({
     <Section alignItems="stretch" height="auto" className="flex-1 min-h-0">
       <ShadowDiv
         scrollContainerRef={scrollContainerRef}
-        className="flex flex-col gap-1 max-h-80 w-full"
+        className={`flex flex-col gap-1 w-full ${menuClassName ?? "max-h-80"}`}
       >
         {filteredChildren.map((child, index) => (
           <div key={index}>

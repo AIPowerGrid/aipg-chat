@@ -206,7 +206,10 @@ export default function ModelListContent({
         placeholder="Search models..."
       />
 
-      <PopoverMenu scrollContainerRef={scrollContainerRef}>
+      <PopoverMenu
+        scrollContainerRef={scrollContainerRef}
+        menuClassName="max-h-[min(70vh,34rem)]"
+      >
         {isLoading
           ? [
               <Text key="loading" font="secondary-body" color="text-03">

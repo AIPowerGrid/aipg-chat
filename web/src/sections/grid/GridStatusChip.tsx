@@ -25,7 +25,15 @@ export default function GridStatusChip() {
   // Grid not configured / unreachable — stay invisible rather than show an error.
   if (workersError) return null;
 
-  const textModels = models.filter((m) => m.type === "text");
+  // Online first, then busiest (most workers), then name — so "what's fast and
+  // available right now" is at the top.
+  const sortedModels = [...models].sort(
+    (a, b) =>
+      Number(b.count > 0) - Number(a.count > 0) ||
+      b.count - a.count ||
+      a.name.localeCompare(b.name)
+  );
+  const modelsServed = models.filter((m) => m.count > 0).length;
 
   return (
     <SimplePopover
@@ -48,6 +56,7 @@ export default function GridStatusChip() {
           </Text>
           <Text text03 secondaryBody>
             {count} {count === 1 ? "worker" : "workers"} online
+            {modelsServed > 0 ? ` · ${modelsServed} models live` : ""}
           </Text>
         </div>
 
@@ -56,31 +65,41 @@ export default function GridStatusChip() {
             <Text text04 secondaryAction>
               Models
             </Text>
-            {models.map((m) => (
-              <div
-                key={`${m.name}-${m.type}`}
-                className="flex flex-row items-center justify-between gap-2 py-0.5"
-              >
-                <div className="flex flex-row items-center gap-2 min-w-0">
-                  <span
-                    className={cn(
-                      "w-1.5 h-1.5 rounded-full shrink-0",
-                      m.count > 0
-                        ? "bg-status-success-05"
-                        : "bg-background-neutral-04"
-                    )}
-                  />
-                  <Text text02 secondaryBody nowrap className="truncate">
-                    {m.name}
+            {sortedModels.map((m) => {
+              const stats = [
+                `${m.count}×`,
+                m.tokens_per_s != null ? `${m.tokens_per_s} t/s` : null,
+                m.avg_ttft_s != null ? `${m.avg_ttft_s}s TTFT` : null,
+              ]
+                .filter(Boolean)
+                .join(" · ");
+              return (
+                <div
+                  key={`${m.name}-${m.type}`}
+                  className={cn(
+                    "flex flex-row items-center justify-between gap-2 py-0.5",
+                    m.count === 0 && "opacity-50"
+                  )}
+                >
+                  <div className="flex flex-row items-center gap-2 min-w-0">
+                    <span
+                      className={cn(
+                        "w-1.5 h-1.5 rounded-full shrink-0",
+                        m.count > 0
+                          ? "bg-status-success-05"
+                          : "bg-background-neutral-04"
+                      )}
+                    />
+                    <Text text02 secondaryBody nowrap className="truncate">
+                      {m.name}
+                    </Text>
+                  </div>
+                  <Text text04 secondaryBody nowrap>
+                    {stats}
                   </Text>
                 </div>
-                <Text text04 secondaryBody nowrap>
-                  {`${m.count}× · ${
-                    m.tokens_per_s != null ? `${m.tokens_per_s} t/s` : "—"
-                  }`}
-                </Text>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
