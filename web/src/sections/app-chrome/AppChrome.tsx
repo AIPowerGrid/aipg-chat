@@ -36,6 +36,7 @@ import { Popover, PopoverMenu } from "@opal/components";
 import { PopoverSearchInput } from "@/sections/sidebar/ChatButton";
 import SimplePopover from "@/refresh-components/SimplePopover";
 import GridStatusChip from "@/sections/grid/GridStatusChip";
+import HeaderUserButton from "@/sections/app-chrome/HeaderUserButton";
 import { Button, LineItemButton, OpenButton } from "@opal/components";
 import { useSidebarState } from "@opal/layouts";
 import useScreenSize from "@/hooks/useScreenSize";
@@ -408,6 +409,7 @@ function HeaderInner({
               </SimplePopover>
             </FrostedDiv>
           )}
+          <HeaderUserButton />
         </div>
       </div>
     </>
