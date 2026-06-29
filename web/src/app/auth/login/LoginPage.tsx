@@ -4,6 +4,7 @@ import { AuthTypeMetadata } from "@/hooks/useAuthTypeMetadata";
 import LoginText from "@/app/auth/login/LoginText";
 import SignInButton from "@/app/auth/login/SignInButton";
 import EmailPasswordForm from "./EmailPasswordForm";
+import WalletSignInButton from "./WalletSignInButton";
 import { AuthType, NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED } from "@/lib/constants";
 import { useSendAuthRequiredMessage } from "@/lib/extension/utils";
 import Text from "@/refresh-components/texts/Text";
@@ -82,6 +83,14 @@ export default function LoginPage({
       {authTypeMetadata?.authType === AuthType.BASIC && (
         <div className="flex flex-col w-full gap-6">
           <LoginText />
+          <WalletSignInButton nextUrl={effectiveNextUrl} />
+          <div className="flex flex-row items-center w-full gap-2">
+            <div className="flex-1 border-t border-text-01" />
+            <Text as="p" text03 mainUiMuted>
+              or sign in with email
+            </Text>
+            <div className="flex-1 border-t border-text-01" />
+          </div>
           <EmailPasswordForm nextUrl={effectiveNextUrl} />
         </div>
       )}
