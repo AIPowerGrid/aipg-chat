@@ -121,7 +121,13 @@ def fetch_openai_compatible_models(
                     name=model_id,
                     display_name=model_name,
                     max_input_tokens=model.get("context_length"),
-                    supports_image_input=infer_vision_support(model_id),
+                    # Prefer an explicit capability advertised by the endpoint
+                    # (the grid emits input_modalities per model); fall back to
+                    # name-based inference for plain OpenAI-compatible providers.
+                    supports_image_input=(
+                        "image" in (model.get("input_modalities") or [])
+                        or infer_vision_support(model_id)
+                    ),
                     supports_reasoning=is_reasoning_model(model_id, model_name),
                 )
             )
