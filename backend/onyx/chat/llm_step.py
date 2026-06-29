@@ -140,6 +140,58 @@ class _XmlToolCallContentFilter:
         return remaining
 
 
+def _reclassify_think_delta(delta: Any, in_think: bool) -> tuple[Any, bool]:
+    """Move inline <think>...</think> content into reasoning_content.
+
+    Some backends (e.g. Gemma on llama.cpp / vllm / sglang) stream their thinking
+    as <think>-tagged text inside `content` instead of emitting a native
+    `reasoning_content` field. Onyx only reclassified that on the Ollama chunk
+    path, so it never fired for the OpenAI-compatible grid provider — reasoning
+    showed up as ordinary answer text (looked hidden / high-latency). Running this
+    on every delta makes reasoning stream for ALL providers. It is a no-op for
+    models that already emit reasoning_content (their content has no <think> tags
+    and `in_think` stays False).
+
+    Returns (possibly-modified delta, new in_think state).
+    """
+    content = getattr(delta, "content", None)
+    if not content or ("<think>" not in content and not in_think):
+        return delta, in_think
+
+    reasoning_parts: list[str] = []
+    content_parts: list[str] = []
+    rest = content
+    while rest:
+        if not in_think:
+            idx = rest.find("<think>")
+            if idx == -1:
+                content_parts.append(rest)
+                break
+            content_parts.append(rest[:idx])
+            rest = rest[idx + len("<think>") :]
+            in_think = True
+        else:
+            idx = rest.find("</think>")
+            if idx == -1:
+                reasoning_parts.append(rest)
+                break
+            reasoning_parts.append(rest[:idx])
+            rest = rest[idx + len("</think>") :]
+            in_think = False
+
+    new_reasoning = "".join(reasoning_parts)
+    new_content = "".join(content_parts)
+    existing = getattr(delta, "reasoning_content", None) or ""
+    try:
+        delta.reasoning_content = (existing + new_reasoning) or None
+        delta.content = new_content or None
+    except Exception:
+        # If the delta object is immutable for some provider, leave it as-is
+        # rather than break the stream.
+        return delta, in_think
+    return delta, in_think
+
+
 def _matching_open_marker_prefix_len(text: str) -> int:
     """Return longest suffix of text that matches prefix of "<function_calls"."""
     max_len = min(len(text), len(_FUNCTION_CALLS_OPEN_MARKER) - 1)
@@ -1142,6 +1194,7 @@ def run_llm_step_pkt_generator(
     xml_tool_call_content_filter = _XmlToolCallContentFilter()
 
     processor_state: Any = None
+    think_in_block = False  # tracks <think> span across deltas (see _reclassify_think_delta)
 
     with generation_span(
         model=llm.config.model_name,
@@ -1309,6 +1362,11 @@ def run_llm_step_pkt_generator(
                 first_action_recorded = True
             if _delta_has_action(delta):
                 actionable_chunk_count += 1
+
+            # Universal <think>...</think> -> reasoning_content reclassification,
+            # so models that emit inline thinking (Gemma on llama.cpp/vllm/sglang)
+            # stream as live reasoning on every provider, not just Ollama.
+            delta, think_in_block = _reclassify_think_delta(delta, think_in_block)
 
             if custom_token_processor:
                 # The custom token processor can modify the deltas for specific custom logic
