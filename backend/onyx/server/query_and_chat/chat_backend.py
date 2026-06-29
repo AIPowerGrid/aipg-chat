@@ -1005,7 +1005,13 @@ async def search_chats(
 @router.post("/stop-chat-session/{chat_session_id}", tags=PUBLIC_API_TAGS)
 def stop_chat_session(
     chat_session_id: UUID,
-    user: User = Depends(require_permission(Permission.WRITE_CHAT)),
+    # Must mirror create-chat-session / send-message (both allow_anonymous=True):
+    # anonymous users can start and stream a chat, so they must also be able to
+    # STOP it. Without this the stop endpoint 403s for anonymous sessions and the
+    # stop button silently does nothing.
+    user: User = Depends(
+        require_permission(Permission.WRITE_CHAT, allow_anonymous=True)
+    ),
     db_session: Session = Depends(get_session),
 ) -> dict[str, str]:
     """
