@@ -2,6 +2,14 @@
 
 This file provides guidance to AI agents when working with code in this repository.
 
+## AIPG identity
+
+This repo is the **AIPG fork of Onyx** (upstream project name below), deployed as
+**aipg.chat** — the current, canonical AI Power Grid chat surface (it supersedes the
+Open WebUI fork in `../grid-chat-new`). It talks to the Grid through the OpenAI-compatible
+`/v1` API. Keep the fork rebase-friendly: isolate AIPG-specific changes; the generic Onyx
+guidance below still applies to the underlying codebase.
+
 ## KEY NOTES
 
 - Python deps live in a `uv`-managed virtualenv at `.venv` (repo root). If it doesn't exist yet, create it \
