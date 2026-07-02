@@ -53,12 +53,15 @@ async def wallet_nonce(request: Request) -> NonceResponse:
     """Issue a single-use nonce + the exact message the wallet should sign."""
     _require_enabled()
     nonce = secrets.token_hex(16)
-    get_redis_client(tenant_id=None).set(f"{_NONCE_PREFIX}{nonce}", "1", ex=NONCE_TTL_SECONDS)
     host = request.headers.get("host", "this site")
     message = (
         f"{host} wants you to sign in with your Ethereum account.\n\n"
         f"Sign in to AI Power Grid.\n\nNonce: {nonce}"
     )
+    # Store the EXACT message we issued (not a flag) so /verify can require the
+    # signed message to equal it — a signature the victim made for any OTHER
+    # message that merely contains this nonce then can't be replayed here.
+    get_redis_client(tenant_id=None).set(f"{_NONCE_PREFIX}{nonce}", message, ex=NONCE_TTL_SECONDS)
     return NonceResponse(nonce=nonce, message=message)
 
 
@@ -77,10 +80,18 @@ async def wallet_verify(
     except ImportError:
         raise HTTPException(status_code=501, detail="Wallet login unavailable (eth-account not installed)")
 
-    # 1) Nonce must be one we issued and not yet used (single-use → anti-replay).
+    # 1) Nonce must be one we issued and not yet used (single-use → anti-replay),
+    #    AND the signed message must be EXACTLY the one we issued for that nonce
+    #    (message-binding → a signature made for a different message that merely
+    #    contains the nonce cannot be replayed to mint this wallet's session).
     match = re.search(r"Nonce: ([0-9a-fA-F]+)", body.message)
     nonce = match.group(1) if match else None
-    if not nonce or not get_redis_client(tenant_id=None).delete(f"{_NONCE_PREFIX}{nonce}"):
+    stored = (
+        get_redis_client(tenant_id=None).getdel(f"{_NONCE_PREFIX}{nonce}") if nonce else None
+    )
+    if isinstance(stored, bytes):
+        stored = stored.decode()
+    if not stored or stored != body.message:
         raise HTTPException(status_code=401, detail="Invalid or expired nonce. Please retry.")
 
     # 2) Signature must recover to the claimed address.
