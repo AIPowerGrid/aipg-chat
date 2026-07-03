@@ -1,6 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
+import { ImageShape } from "@/app/app/services/streamingModels";
 
-export default function GeneratingImageDisplay({ isCompleted = false }) {
+// Placeholder box sized to mirror the final InMessageImage bounds per shape, so
+// when generation finishes the real image drops into the same footprint with no
+// layout jump. Krea 2 Turbo defaults to portrait, so that's the default here.
+const SHAPE_BOX: Record<ImageShape, string> = {
+  square: "w-96 aspect-square",
+  landscape: "w-[28rem] aspect-[3/2]",
+  portrait: "w-72 aspect-[2/3]",
+};
+
+export default function GeneratingImageDisplay({
+  isCompleted = false,
+  shape = "portrait",
+}: {
+  isCompleted?: boolean;
+  shape?: ImageShape;
+}) {
   const [progress, setProgress] = useState(0);
   const progressRef = useRef(0);
   const animationRef = useRef<number | null>(null);
@@ -56,11 +72,16 @@ export default function GeneratingImageDisplay({ isCompleted = false }) {
   }, [isCompleted]);
 
   return (
-    <div className="object-cover object-center border border-background-200 bg-background-100 items-center justify-center overflow-hidden flex rounded-lg w-96 h-96 transition-opacity duration-300 opacity-100">
-      <div className="m-auto relative flex">
+    <div
+      className={`border border-background-200 bg-background-100 flex flex-col items-center justify-center gap-4 overflow-hidden rounded-lg max-w-full transition-opacity duration-300 opacity-100 ${
+        SHAPE_BOX[shape] ?? SHAPE_BOX.portrait
+      }`}
+    >
+      {/* Progress ring with pulsing image glyph in the center */}
+      <div className="relative flex items-center justify-center">
         <svg className="w-16 h-16 transform -rotate-90" viewBox="0 0 100 100">
           <circle
-            className="text-text-200"
+            className="text-background-300"
             strokeWidth="8"
             stroke="currentColor"
             fill="transparent"
@@ -96,6 +117,38 @@ export default function GeneratingImageDisplay({ isCompleted = false }) {
             />
           </svg>
         </div>
+      </div>
+
+      {/* Message + inline spinner */}
+      <div className="flex flex-col items-center gap-1 px-6 text-center">
+        <div className="flex items-center gap-2 text-sm font-medium text-text-800">
+          <svg
+            className="w-4 h-4 animate-spin text-text-500"
+            viewBox="0 0 24 24"
+            fill="none"
+          >
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-90"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+          <span>
+            Generating your image
+            {progress > 0 ? ` · ${Math.round(progress)}%` : "…"}
+          </span>
+        </div>
+        <span className="text-xs text-text-400">
+          Running on the AI Power Grid — this usually takes a few seconds
+        </span>
       </div>
     </div>
   );

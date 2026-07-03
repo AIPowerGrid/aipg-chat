@@ -7,7 +7,7 @@ import Text from "@/refresh-components/texts/Text";
 export default function LoginText() {
   const settings = useContext(SettingsContext);
   return (
-    <div className="w-full flex flex-col ">
+    <div className="w-full flex flex-col items-center text-center">
       <Text as="p" headingH2 text05>
         Welcome to{" "}
         {(settings && settings?.enterpriseSettings?.application_name) || "AI Power Grid"}

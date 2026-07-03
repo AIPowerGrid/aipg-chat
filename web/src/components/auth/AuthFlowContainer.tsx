@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { SvgOnyxLogo } from "@opal/logos";
 
 export default function AuthFlowContainer({
   children,
@@ -12,8 +11,9 @@ export default function AuthFlowContainer({
 }) {
   return (
     <div className="p-4 flex flex-col items-center justify-center min-h-screen bg-background">
-      <div className="w-full max-w-md flex items-start flex-col bg-background-tint-00 rounded-16 shadow-lg shadow-02 p-6">
-        <SvgOnyxLogo size={44} className="text-theme-primary-05" />
+      <div className="w-full max-w-md flex items-center flex-col bg-background-tint-00 rounded-16 shadow-lg shadow-02 p-6">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/aipg-logo.svg" alt="AI Power Grid" className="h-12 w-12" />
         <div className="w-full mt-3">{children}</div>
       </div>
       {authState === "login" && (

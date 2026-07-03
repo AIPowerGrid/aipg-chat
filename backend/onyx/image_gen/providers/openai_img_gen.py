@@ -109,6 +109,11 @@ class OpenAIImageGenerationProvider(ImageGenerationProvider):
                     size=size,
                     n=n,
                     quality=quality,
+                    # AIPG grid models aren't in litellm's registry, so it 422s on
+                    # params it can't map (e.g. response_format). Drop the ones it
+                    # doesn't recognize rather than failing the call — the grid
+                    # applies its own sane defaults for anything omitted.
+                    drop_params=True,
                     **kwargs,
                 )
 
@@ -128,5 +133,8 @@ class OpenAIImageGenerationProvider(ImageGenerationProvider):
                 size=size,
                 n=n,
                 quality=quality,
+                # See note in image_edit: drop params litellm can't map for grid
+                # models (e.g. response_format) instead of 422-ing the call.
+                drop_params=True,
                 **kwargs,
             )
