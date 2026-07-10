@@ -1,5 +1,10 @@
 # Onyx Chat Bot Widget
 
+> **Example only.** This is not a deployed AIPG widget or credential broker.
+> Never put a Grid API key, Chat session token, or admin key in browser-visible
+> environment variables; use only a purpose-built origin-bound widget
+> credential once the backend supports one.
+
 Note: The widget requires a Onyx API key, which is a paid (cloud/enterprise) feature.
 
 This is a code example for how you can use Onyx's APIs to build a chat bot widget for a website! The main code to look at can be found in `src/app/widget/Widget.tsx`.

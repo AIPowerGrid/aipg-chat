@@ -107,7 +107,8 @@ import { markdown } from "@opal/utils";
 </Text>
 ```
 
-Supported syntax: `**bold**`, `*italic*`, `` `code` ``, `[link](url)`, `~~strikethrough~~`, `\n` (newline → `<br />`).
+Supported syntax: bold, italic, inline code, Markdown links, strikethrough, and
+`\n` (newline → `<br />`).
 
 Markdown rendering uses `react-markdown` internally, restricted to inline elements only.
 `http(s)` links open in a new tab; `mailto:` and `tel:` links open natively. Inline code

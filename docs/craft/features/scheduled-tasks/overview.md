@@ -3,7 +3,7 @@
 ## Objective
 
 Implement the **Scheduled Tasks** product surface in
-[`docs/product/scheduled-tasks.md`](../../../product/scheduled-tasks.md): a user
+[`docs/craft/product/scheduled-tasks.md`](../../product/scheduled-tasks.md): a user
 saves a prompt + schedule, and the system runs the prompt as Craft on a
 timer. Every fire creates a brand-new Craft session, executes the agent
 headlessly, and records what happened.

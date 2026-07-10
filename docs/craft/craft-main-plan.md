@@ -90,7 +90,7 @@ First-class approval primitive for risky Craft actions: external writes, deliver
 
 **Key decisions:** approvals are in scope for V1; enforcement in backend/proxy paths only (prompts and OpenCode permissions are guidance, not boundary); session/trigger owner can approve their own writes by default with admin override; encrypted request snapshots + idempotency keys for safe replay; no Slack/email notification dependency in V1 (skill-based later).
 
-Detail doc: [`approvals.md`](approvals.md).
+Detail doc: [`features/approvals/approvals-plan.md`](features/approvals/approvals-plan.md).
 
 ### 7. Scheduled Triggers
 
@@ -98,7 +98,7 @@ Saved Craft prompts on a schedule. Three schedule forms: run-once, simple interv
 
 **Key decisions:** every scheduled run gets a fresh session (no reuse); scheduled-only for V1 (no event triggers); explicit timeout logic in the task body (Celery time limits don't work with thread pools); approval-waiting runs release sandbox capacity so humans aren't blocking CPU.
 
-Detail doc: [`triggers.md`](triggers.md). Depends on **Approvals** for the `WAITING_FOR_APPROVAL` state and on **Interception** for write gating.
+Detail doc: [`product/scheduled-tasks.md`](product/scheduled-tasks.md). Depends on **Approvals** for the `WAITING_FOR_APPROVAL` state and on **Interception** for write gating.
 
 ### 8. Shared admin UI
 

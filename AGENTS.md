@@ -2,6 +2,74 @@
 
 This file provides guidance to AI agents when working with code in this repository.
 
+## Purpose
+
+AIPG's canonical chat, search, agent, and code-building application, forked from
+Onyx and deployed at `aipg.chat`. The fork uses AI Power Grid as its dynamic
+OpenAI-compatible model provider while retaining the broader Onyx application.
+
+## Ownership
+
+- `backend/` - FastAPI, database, workers, connectors, LLM/Grid integration,
+  Craft/build sandbox, migrations, and tests. Owned by `backend/AGENTS.md`.
+- `web/` - Next.js frontend. Owned by `web/AGENTS.md`.
+- `docs/` - AIPG/Onyx architecture, Craft plans, and operator notes. Owned by
+  `docs/AGENTS.md`.
+- `deployment/`, `docker-compose*.yml`, `install.sh` - runtime packaging and
+  deployment surfaces.
+- `cli/`, `mobile/`, `widget/`, `extensions/` - auxiliary clients and embedded
+  surfaces; governed here unless a closer guide is added.
+
+## Local Contracts
+
+- Inherit org engineering standards from
+  `../aipg-documentation/engineering-standards/` while preserving compatible
+  upstream Onyx conventions below.
+- Keep AIPG fork changes isolated and rebase-friendly. Generic product behavior
+  belongs upstream where possible; Grid provider/auth/branding changes remain
+  clearly attributable to this fork.
+- `AIPG_GRID_API_BASE` uses the canonical `https://api.aipowergrid.io/v1` API.
+  Model availability is reconciled from Grid; never restore Horde `/api/v2`.
+- Secrets, session credentials, connector tokens, Grid keys, and sandbox access
+  tokens never enter client bundles, docs, or logs.
+- Craft/build execution is an untrusted-code boundary. Preserve auth, project
+  ownership, network isolation, egress/IMDS controls, quotas, and cleanup.
+
+## Work Guidance
+
+- Read the nearest backend/web/docs guide and the detailed upstream guidance in
+  this file before editing.
+- AIPG provider changes require config, model reconciliation, image generation,
+  frontend model UX, deployment env, and tests to stay aligned.
+- Meaningful fork behavior changes require a DOX pass before completion.
+
+## Verification
+
+- Backend gates are documented in `backend/AGENTS.md` and the testing sections
+  below.
+- Frontend gates are documented in `web/AGENTS.md`.
+- Run `pre-commit run --all-files` for broad changes when the environment is
+  available.
+
+## Child DOX Index
+
+- [backend/AGENTS.md](backend/AGENTS.md) - backend, migrations, workers, Grid
+  integration, and Craft security boundary.
+- [web/AGENTS.md](web/AGENTS.md) - frontend standards and tests.
+- [docs/AGENTS.md](docs/AGENTS.md) - plans, architecture, and operator notes.
+- [desktop/AGENTS.md](desktop/AGENTS.md) - packaged desktop application.
+- [cli/AGENTS.md](cli/AGENTS.md) - Go CLI, TUI, PAT storage, and SSH service.
+- [mobile/AGENTS.md](mobile/AGENTS.md) - standalone Expo mobile client.
+- [widget/AGENTS.md](widget/AGENTS.md) - embeddable Lit chat widget and its
+  browser-visible credential boundary.
+- [extensions/AGENTS.md](extensions/AGENTS.md) - browser extensions and their
+  privileged host/page access.
+- [tools/AGENTS.md](tools/AGENTS.md) - repository developer tooling, including
+  the `ods` command.
+- [loadtest/AGENTS.md](loadtest/AGENTS.md) - isolated Locust workloads and mock
+  LLM server.
+- [examples/AGENTS.md](examples/AGENTS.md) - non-production integration examples.
+
 ## AIPG identity
 
 This repo is the **AIPG fork of Onyx** (upstream project name below), deployed as
@@ -14,9 +82,12 @@ guidance below still applies to the underlying codebase.
 
 - Python deps live in a `uv`-managed virtualenv at `.venv` (repo root). If it doesn't exist yet, create it \
   with `uv sync --frozen`, then `source .venv/bin/activate`.
-- To make tests work, check the `.env` file at the root of the project to find an OpenAI key.
-- If using `playwright` to explore the frontend, you can usually log in with username `a@example.com` and password
-  `a`. The app can be accessed at `http://localhost:3000`.
+- Unit tests must not require or inspect a real provider key. Use mocks or
+  dedicated synthetic integration credentials; never print or copy secrets from
+  the root `.env` into commands, prompts, fixtures, or logs.
+- If a local development fixture explicitly seeds `a@example.com` / `a`, it may
+  be used only against `http://localhost:3000`; never try fixture credentials on
+  a deployed environment.
 - You should assume that all Onyx services are running. To verify, you can check the `backend/log` directory to
   make sure we see logs coming out from the relevant service.
 - To connect to the Postgres database, use: `docker exec -it onyx-relational_db-1 psql -U postgres -c "<SQL>"`

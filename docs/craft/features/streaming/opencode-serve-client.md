@@ -2,7 +2,7 @@
 
 ## Context
 
-Companion to [`docs/craft/opencode-serve-migration.md`](../opencode-serve-migration.md). The migration plan covers the *why* (transport-level fix for the ACP terminator-drop bug + four architectural wins), the pod-spec changes, persistence-model changes, and rollout phases. **This doc covers the implementation of the Phase-1 deliverable only: the in-process Python client (`OpencodeServeClient`) that replaces `ACPExecClient` / `DockerACPExecClient` behind `SandboxManager.send_message`.**
+Companion to [`opencode-serve-migration.md`](./opencode-serve-migration.md). The migration plan covers the *why* (transport-level fix for the ACP terminator-drop bug + four architectural wins), the pod-spec changes, persistence-model changes, and rollout phases. **This doc covers the implementation of the Phase-1 deliverable only: the in-process Python client (`OpencodeServeClient`) that replaces `ACPExecClient` / `DockerACPExecClient` behind `SandboxManager.send_message`.**
 
 The public contract (`Generator[ACPEvent, None, None]` returned by `send_message`) is unchanged from the existing ACP clients. Callers (`session/manager.py`, `scheduled_tasks/executor.py`, SSE encoding to the browser, packet logger) require no changes.
 
@@ -270,7 +270,7 @@ Anything not requiring cross-event correlation stays out of state.
 
 `/event` does **not** honor `Last-Event-ID` ([opencode #25657](https://github.com/anomalyco/opencode/issues/25657)). Plain TCP retry loses every event during the disconnect window.
 
-The original plan used `GET /session/:id/message` as the snapshot source. Empirical testing (see [`../opencode-serve-test-report.md`](../opencode-serve-test-report.md) §Gap-fill) disproved that: `part.text` in the snapshot is **empty during streaming** and only populated after the turn terminator. So the snapshot is useless for mid-turn recovery.
+The original plan used `GET /session/:id/message` as the snapshot source. Empirical testing disproved that: `part.text` in the snapshot is **empty during streaming** and only populated after the turn terminator. So the snapshot is useless for mid-turn recovery.
 
 The reliable reconcile point is the `message.part.updated` event itself. For each text part, opencode emits at least two of these on the live stream: once at part creation (empty `text`) and once at part finalization (`text` = full accumulated content). Plus any intermediate updates triggered by tool boundaries. Each carries cumulative `part.text`. If we missed deltas in a disconnect window, the next `message.part.updated` for that part will let us recover what we missed by comparing accumulated length.
 
@@ -471,4 +471,4 @@ This is a parallel work item: doesn't block the client library landing behind th
 
 ## Open questions remaining
 
-None for the client library itself. The remaining decisions are out of scope (e.g., when to flip the flag, when to delete the ACP code per [`drop-acp-layer.md`](../drop-acp-layer.md)).
+None for the client library itself. The remaining decisions are out of scope (e.g., when to flip the flag, when to delete the ACP code per [`drop-acp-layer.md`](./drop-acp-layer.md)).

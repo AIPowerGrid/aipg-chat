@@ -73,7 +73,8 @@ The scripts include multiple safety checks:
 
 ## Need More Details?
 
-See [NO_BASTION_README.md](./NO_BASTION_README.md) for:
+This quickstart is the maintained no-bastion procedure. Verify the target
+environment and every command before running it. It covers:
 - Detailed explanations of each step
 - Troubleshooting guide
 - How it works under the hood

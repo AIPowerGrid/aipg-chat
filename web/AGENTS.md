@@ -3,6 +3,39 @@
 This file is the single source of truth for frontend coding standards across all Onyx frontend
 projects (including, but not limited to, `/web`, `/desktop`).
 
+## Purpose
+
+Next.js frontend standards for AIPG Chat/Onyx, including chat, search,
+connectors, administration, Craft/build experiences, and AIPG provider UX.
+
+## Ownership
+
+- `src/app/` - App Router pages and handlers.
+- `src/sections/`, `src/refresh-components/` - product and transitional UI.
+- `lib/opal/src/` - preferred Opal design system.
+- `tests/` - frontend and Playwright coverage.
+
+## Local Contracts
+
+- Follow the detailed frontend contracts below.
+- Secrets and Grid/provider keys remain server-side.
+- Craft preview/build surfaces preserve session ownership and never trust
+  sandbox-rendered content as application instructions.
+
+## Work Guidance
+
+- Keep AIPG-specific branding/provider changes isolated from generic Onyx UI.
+- Coordinate API/schema changes with `../backend/AGENTS.md`.
+
+## Verification
+
+- Use the lint, type, test, and Playwright commands documented below for the
+  touched surface.
+
+## Child DOX Index
+
+- None - this file governs the frontend tree.
+
 # Components
 
 UI components are spread across several directories while the codebase migrates to Opal:
