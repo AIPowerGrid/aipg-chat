@@ -31,6 +31,9 @@ connectors, administration, Craft/build experiences, and AIPG provider UX.
 
 - Use the lint, type, test, and Playwright commands documented below for the
   touched surface.
+- Run `bun audit` for dependency changes. Classify residual transitive findings
+  by production reachability; do not force incompatible package majors merely
+  to silence the counter.
 
 ## Child DOX Index
 
