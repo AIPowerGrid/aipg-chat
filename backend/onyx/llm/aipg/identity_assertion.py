@@ -122,6 +122,15 @@ def _service_token(api_key: str, subject: str) -> str:
         return token
 
 
+def grid_user_token(user: User) -> str:
+    """Return a short-lived Core token for one authenticated Chat user."""
+    subject = _app_subject(user)
+    if subject is None:
+        raise GridIdentityError("Anonymous users do not have a Grid identity")
+    _base, key = _grid_config()
+    return _service_token(key, subject)
+
+
 async def _post_identity(path: str, payload: dict[str, Any]) -> dict[str, Any]:
     base, key = _grid_config()
     try:

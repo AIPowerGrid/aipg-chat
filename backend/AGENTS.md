@@ -32,7 +32,9 @@ Craft/build execution control plane.
   never in a browser or reusable provider configuration. Google ID tokens and
   Core-issued SIWE proofs bind that local subject to Core's canonical account;
   the browser must never choose the app subject. Anonymous callers receive no
-  delegated identity.
+  delegated identity. Authenticated clients may read the normalized canonical
+  account ID and credit summary through `GET /api/grid/account`; Chat obtains
+  both from Core and never derives an account ID locally.
 - Use `OnyxError`, typed error codes, and the global error envelope described in
   the root guide; do not add ad-hoc `HTTPException` responses.
 - Craft/build routes require the feature gate and authenticated resource
