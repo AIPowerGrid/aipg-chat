@@ -32,19 +32,15 @@ def test_grid_account_uses_delegated_token_and_normalizes_response(
     def fake_get(url: str, **kwargs) -> httpx.Response:
         calls.append((url, kwargs))
         request = httpx.Request("GET", url)
-        if url.endswith("/v1/account"):
-            return httpx.Response(
-                200,
-                json={"account_id": "account-1"},
-                request=request,
-            )
         return httpx.Response(
             200,
             json={
+                "account_id": "account-1",
                 "paid": {"balance_usd": 12.5},
                 "total_spendable_usd": 13.0,
                 "total_preview_usd": 13.25,
                 "charging_enabled": False,
+                "charging_mode": "off",
             },
             request=request,
         )
@@ -57,9 +53,9 @@ def test_grid_account_uses_delegated_token_and_normalizes_response(
         "total_spendable_usd": 13.0,
         "total_preview_usd": 13.25,
         "charging_enabled": False,
+        "charging_mode": "off",
     }
     assert [call[0] for call in calls] == [
-        "https://api.aipowergrid.io/v1/account",
         "https://api.aipowergrid.io/v1/account/credits",
     ]
     assert all(
@@ -74,11 +70,11 @@ def test_grid_account_rejects_incomplete_core_response(
     monkeypatch.setattr(
         grid_status,
         "_grid_user_get",
-        lambda path, _user: (
-            {"account_id": "account-1"}
-            if path == "/v1/account"
-            else {"paid": {}, "charging_enabled": False}
-        ),
+        lambda _path, _user: {
+            "account_id": "account-1",
+            "paid": {},
+            "charging_enabled": False,
+        },
     )
 
     with pytest.raises(OnyxError) as exc:

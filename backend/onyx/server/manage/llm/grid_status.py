@@ -137,9 +137,8 @@ def get_grid_account(
     user: User = Depends(current_limited_user),
 ) -> dict[str, Any]:
     """Canonical Core account and balance for the signed-in Chat user."""
-    account = _grid_user_get("/v1/account", user)
     credits = _grid_user_get("/v1/account/credits", user)
-    account_id = account.get("account_id")
+    account_id = credits.get("account_id")
     paid = credits.get("paid")
     if not isinstance(account_id, str) or not account_id:
         raise OnyxError(
@@ -163,4 +162,5 @@ def get_grid_account(
             "preview balance",
         ),
         "charging_enabled": credits.get("charging_enabled") is True,
+        "charging_mode": str(credits.get("charging_mode") or "off"),
     }
