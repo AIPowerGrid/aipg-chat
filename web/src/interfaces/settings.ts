@@ -56,7 +56,7 @@ export interface Settings {
   // Default Assistant settings
   disable_default_assistant?: boolean;
 
-  // Onyx Craft (Build Mode) feature flag
+  // AI Power Grid Craft (Build Mode) feature flag
   onyx_craft_enabled?: boolean;
 
   // Dev/debug flag: when true, the Craft UI renders an "Opencode pod logs"
@@ -131,7 +131,7 @@ export interface EnterpriseSettings {
   custom_help_link_url: string | null;
   custom_help_link_label: string | null;
 
-  // Hide the "Powered by Onyx" tagline under the sidebar logo.
+  // Hide the "Powered by AI Power Grid" tagline under the sidebar logo.
   hide_onyx_branding: boolean | null;
 }
 

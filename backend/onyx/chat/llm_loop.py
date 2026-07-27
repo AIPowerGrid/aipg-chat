@@ -22,6 +22,7 @@ from onyx.chat.models import FileToolMetadata
 from onyx.chat.models import LlmStepResult
 from onyx.chat.models import ToolCallSimple
 from onyx.chat.prompt_utils import build_reminder_message
+from onyx.chat.stop_signal_checker import is_stream_cancelled
 from onyx.chat.prompt_utils import build_system_prompt
 from onyx.chat.prompt_utils import get_default_base_system_prompt
 from onyx.configs.app_configs import INTEGRATION_TESTS_MODE
@@ -702,6 +703,11 @@ def run_llm_loop(
 
         reasoning_cycles = 0
         for llm_cycle_count in range(MAX_LLM_CYCLES):
+            # If the user pressed stop, don't kick off another upstream LLM
+            # cycle (the in-flight stream is already torn down in multi_llm).
+            if is_stream_cancelled():
+                break
+
             # Handling tool calls based on cycle count and past cycle conditions
             out_of_cycles = llm_cycle_count == MAX_LLM_CYCLES - 1
             if forced_tool_id:

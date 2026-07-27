@@ -576,6 +576,8 @@ class OnyxCeleryTask:
     CHECK_FOR_DOC_PERMISSIONS_SYNC = "check_for_doc_permissions_sync"
     CHECK_FOR_EXTERNAL_GROUP_SYNC = "check_for_external_group_sync"
     CHECK_FOR_AUTO_LLM_UPDATE = "check_for_auto_llm_update"
+    # AIPG fork: refresh AI Power Grid models from its live /v1/models endpoint
+    SYNC_GRID_MODELS = "sync_grid_models"
 
     # User file processing
     CHECK_FOR_USER_FILE_PROCESSING = "check_for_user_file_processing"

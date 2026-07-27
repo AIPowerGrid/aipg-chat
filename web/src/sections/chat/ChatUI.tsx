@@ -21,7 +21,7 @@ import {
 } from "@/app/app/stores/useChatSessionStore";
 
 /** Width constraint for normal (non-multi-model) messages. */
-const MSG_MAX_W = "max-w-[720px] min-w-[400px]";
+const MSG_MAX_W = "max-w-[720px] sm:min-w-[400px]";
 
 export interface ChatUIProps {
   liveAgent: MinimalAgent;

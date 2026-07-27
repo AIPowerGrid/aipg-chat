@@ -95,6 +95,9 @@ from onyx.server.manage.llm.models import OpenRouterModelsRequest
 from onyx.server.manage.llm.models import SyncModelEntry
 from onyx.server.manage.llm.models import TestLLMRequest
 from onyx.server.manage.llm.models import VisionProviderResponse
+from onyx.server.manage.llm.openai_compatible_fetch import (
+    fetch_openai_compatible_models_response as _get_openai_compatible_models_response,
+)
 from onyx.server.manage.llm.provider_cache import cache_provider_listing
 from onyx.server.manage.llm.provider_cache import get_cached_provider_listing
 from onyx.server.manage.llm.provider_cache import invalidate_provider_listing_cache
@@ -1609,62 +1612,6 @@ def _get_litellm_models_response(api_key: str | None, api_base: str) -> dict:
         source_name="LiteLLM proxy",
         api_key=api_key,
     )
-
-
-def _get_openai_compatible_models_response(
-    url: str,
-    source_name: str,
-    api_key: str | None = None,
-) -> dict:
-    """Fetch model metadata from an OpenAI-compatible `/models` endpoint."""
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "HTTP-Referer": "https://onyx.app",
-        "X-Title": "Onyx",
-    }
-    if not api_key:
-        headers.pop("Authorization")
-
-    try:
-        response = httpx.get(url, headers=headers, timeout=10.0)
-        response.raise_for_status()
-        return response.json()
-    except httpx.HTTPStatusError as e:
-        if e.response.status_code == 401:
-            raise OnyxError(
-                OnyxErrorCode.VALIDATION_ERROR,
-                f"Authentication failed: invalid or missing API key for {source_name}.",
-            )
-        elif e.response.status_code == 404:
-            raise OnyxError(
-                OnyxErrorCode.VALIDATION_ERROR,
-                f"{source_name} models endpoint not found at {url}. Please verify the API base URL.",
-            )
-        else:
-            raise OnyxError(
-                OnyxErrorCode.BAD_GATEWAY,
-                f"Failed to fetch {source_name} models: {e}",
-            )
-    except httpx.RequestError as e:
-        logger.warning(
-            "Failed to fetch models from OpenAI-compatible endpoint",
-            extra={"source": source_name, "url": url, "error": str(e)},
-            exc_info=True,
-        )
-        raise OnyxError(
-            OnyxErrorCode.BAD_GATEWAY,
-            f"Failed to fetch {source_name} models: {e}",
-        )
-    except ValueError as e:
-        logger.warning(
-            "Received invalid model response from OpenAI-compatible endpoint",
-            extra={"source": source_name, "url": url, "error": str(e)},
-            exc_info=True,
-        )
-        raise OnyxError(
-            OnyxErrorCode.BAD_GATEWAY,
-            f"Failed to fetch {source_name} models: {e}",
-        )
 
 
 @admin_router.post("/bifrost/available-models")

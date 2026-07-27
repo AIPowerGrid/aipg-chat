@@ -17,6 +17,7 @@ from onyx.db.llm import fetch_user_group_ids
 from onyx.db.models import LLMProvider as LLMProviderModel
 from onyx.db.models import Persona
 from onyx.db.models import User
+from onyx.llm.aipg.identity_assertion import grid_identity_headers
 from onyx.llm.constants import LlmProviderNames
 from onyx.llm.interfaces import LLM
 from onyx.llm.multi_llm import LitellmLLM
@@ -141,7 +142,7 @@ def get_llm_for_persona(
     """
     if persona is None:
         logger.warning("No persona provided, using default LLM")
-        return get_default_llm()
+        return get_default_llm(user=user)
 
     provider_name_override = llm_override.model_provider if llm_override else None
     model_version_override = llm_override.model_version if llm_override else None
@@ -151,6 +152,7 @@ def get_llm_for_persona(
         return get_default_llm(
             temperature=temperature_override or GEN_AI_TEMPERATURE,
             additional_headers=additional_headers,
+            user=user,
         )
 
     with get_session_with_current_tenant() as db_session:
@@ -165,6 +167,7 @@ def get_llm_for_persona(
                     else GEN_AI_TEMPERATURE
                 ),
                 additional_headers=additional_headers,
+                user=user,
             )
         provider_model, model = resolved
 
@@ -182,6 +185,7 @@ def get_llm_for_persona(
             return get_default_llm(
                 temperature=temperature_override or GEN_AI_TEMPERATURE,
                 additional_headers=additional_headers,
+                user=user,
             )
 
         llm_provider = LLMProviderView.from_model(provider_model)
@@ -191,6 +195,7 @@ def get_llm_for_persona(
         llm_provider=llm_provider,
         temperature=temperature_override,
         additional_headers=additional_headers,
+        user=user,
     )
 
 
@@ -301,6 +306,7 @@ def llm_from_provider(
     timeout: int | None = None,
     temperature: float | None = None,
     additional_headers: dict[str, str] | None = None,
+    user: User | None = None,
 ) -> LLM:
     configured_max_input_tokens = _get_model_configured_max_input_tokens(
         llm_provider=llm_provider, model_name=model_name
@@ -316,6 +322,9 @@ def llm_from_provider(
             llm_provider=llm_provider, model_name=model_name
         )
     )
+    additional_headers, extra_headers_factory = grid_identity_headers(
+        additional_headers, llm_provider, user
+    )
     return get_llm(
         provider=llm_provider.provider,
         model=model_name,
@@ -327,6 +336,7 @@ def llm_from_provider(
         timeout=timeout,
         temperature=temperature,
         additional_headers=additional_headers,
+        extra_headers_factory=extra_headers_factory,
         max_input_tokens=max_input_tokens,
         model_kwargs=model_kwargs,
     )
@@ -351,6 +361,7 @@ def get_default_llm(
     timeout: int | None = None,
     temperature: float | None = None,
     additional_headers: dict[str, str] | None = None,
+    user: User | None = None,
 ) -> LLM:
     with get_session_with_current_tenant() as db_session:
         model = fetch_default_llm_model(db_session)
@@ -358,12 +369,14 @@ def get_default_llm(
         if not model:
             raise ValueError("No default LLM model found")
 
+        llm_provider = LLMProviderView.from_model(model.llm_provider)
         return llm_from_provider(
             model_name=model.name,
-            llm_provider=LLMProviderView.from_model(model.llm_provider),
+            llm_provider=llm_provider,
             timeout=timeout,
             temperature=temperature,
             additional_headers=additional_headers,
+            user=user,
         )
 
 
@@ -379,6 +392,7 @@ def get_llm(
     temperature: float | None = None,
     timeout: int | None = None,
     additional_headers: dict[str, str] | None = None,
+    extra_headers_factory: Callable[[], dict[str, str]] | None = None,
     model_kwargs: dict[str, Any] | None = None,
 ) -> LLM:
     if temperature is None:
@@ -404,6 +418,7 @@ def get_llm(
         temperature=temperature,
         custom_config=custom_config,
         extra_headers=extra_headers,
+        extra_headers_factory=extra_headers_factory,
         model_kwargs=model_kwargs or {},
         max_input_tokens=max_input_tokens,
     )

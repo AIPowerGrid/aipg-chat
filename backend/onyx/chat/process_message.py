@@ -57,6 +57,7 @@ from onyx.chat.prompt_utils import calculate_reserved_tokens
 from onyx.chat.save_chat import save_chat_turn
 from onyx.chat.stop_signal_checker import is_connected as check_stop_signal
 from onyx.chat.stop_signal_checker import reset_cancel_status
+from onyx.chat.stop_signal_checker import stream_cancelled_check
 from onyx.configs.app_configs import DISABLE_VECTOR_DB
 from onyx.configs.app_configs import INTEGRATION_TESTS_MODE
 from onyx.configs.chat_configs import CHAT_HEARTBEAT_INTERVAL_S
@@ -1166,6 +1167,14 @@ def _run_models(
 
     def _run_model(model_idx: int) -> None:
         """Run one LLM loop inside a worker thread, writing packets to ``merged_queue``."""
+
+        # Make the user-stop fence observable inside the LLM stream loop so that
+        # pressing stop tears down the upstream (grid) HTTP request promptly,
+        # instead of draining the response to completion in the background.
+        # check_is_connected() returns True while still connected, so the
+        # cancellation hook is its inverse. See stop_signal_checker for how this
+        # ContextVar reaches the litellm streaming loop.
+        stream_cancelled_check.set(lambda: not setup.check_is_connected())
 
         model_emitter = Emitter(
             model_idx=model_idx,

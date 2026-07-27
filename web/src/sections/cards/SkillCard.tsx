@@ -37,7 +37,7 @@ export interface SkillCardProps {
 
 export default function SkillCard({ item, onClick }: SkillCardProps) {
   const { enterpriseSettings } = useSettingsContext();
-  const appName = enterpriseSettings?.application_name || "Onyx";
+  const appName = enterpriseSettings?.application_name || "AI Power Grid";
 
   const handleClick = useCallback(() => {
     onClick?.(item);

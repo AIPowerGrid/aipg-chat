@@ -13,7 +13,7 @@
  * `/api/settings` response instead — see `web/AGENTS.md` (or ask).
  */
 export const FEATURE_FLAGS = {
-  /** Disables the Onyx Craft (Build Mode) sidebar intro animation. */
+  /** Disables the AI Power Grid Craft (Build Mode) sidebar intro animation. */
   CRAFT_ANIMATION_DISABLED: "craft-animation-disabled",
 } as const;
 

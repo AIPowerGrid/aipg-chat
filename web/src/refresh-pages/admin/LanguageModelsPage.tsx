@@ -351,7 +351,7 @@ export default function LanguageModelsPage() {
           <Card border="solid" rounding="lg">
             <InputHorizontal
               title="Default Model"
-              description="This model will be used by Onyx by default in your chats."
+              description="This model will be used by AI Power Grid by default in your chats."
               center
               withLabel
             >
@@ -431,7 +431,7 @@ export default function LanguageModelsPage() {
         >
           <Content
             title="Add Provider"
-            description="Onyx supports both popular providers and self-hosted models."
+            description="AI Power Grid supports both popular providers and self-hosted models."
             sizePreset="main-content"
             variant="section"
           />

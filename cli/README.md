@@ -1,5 +1,10 @@
 # Onyx CLI
 
+> **Upstream auxiliary client, not an AIPG Grid CLI release.** This package
+> targets an Onyx application using an Onyx personal access token. It does not
+> obtain or manage Grid generation API keys and has not been republished as an
+> AIPG-branded binary. Keep these credential domains separate.
+
 [![Release CLI](https://github.com/onyx-dot-app/onyx/actions/workflows/release-cli.yml/badge.svg)](https://github.com/onyx-dot-app/onyx/actions/workflows/release-cli.yml)
 [![PyPI](https://img.shields.io/pypi/v/onyx-cli.svg)](https://pypi.org/project/onyx-cli/)
 

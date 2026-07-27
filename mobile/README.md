@@ -1,5 +1,10 @@
 # Onyx Mobile (Expo)
 
+> **Development scaffold, not a released AIPG mobile app.** Branding, secure
+> login/token storage, production endpoints, app-store packaging, and end-to-end
+> AIPG deployment verification remain incomplete. The placeholder Onyx assets
+> and setup below describe local upstream development.
+
 A standalone React Native app for Onyx, under `mobile/` — independent of `web/` (its own
 dependencies, lockfile, and tooling). Scaffolded with `create-expo-app` (Expo Router template).
 

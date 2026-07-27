@@ -1,6 +1,36 @@
+from collections.abc import Callable
+from contextvars import ContextVar
 from uuid import UUID
 
 from onyx.cache.interface import CacheBackend
+
+# Per-request cancellation hook, set inside each model's worker thread
+# (process_message._run_model). When it returns True the user pressed stop and
+# any in-flight upstream LLM stream should be torn down rather than drained to
+# completion. Kept in a ContextVar so it reaches the litellm streaming loop in
+# the same thread/context without threading a callback through every signature.
+# (process_message submits workers via ``ctx.run`` on a copied context, so a
+# value set inside the worker is visible to everything it calls downstream.)
+stream_cancelled_check: ContextVar[Callable[[], bool] | None] = ContextVar(
+    "stream_cancelled_check", default=None
+)
+
+
+def is_stream_cancelled() -> bool:
+    """True if the current worker context has a cancellation hook that has fired.
+
+    Safe to call from anywhere: returns False when no hook is registered (e.g.
+    background jobs, tests) and swallows any error from the hook itself so a
+    transient cache hiccup never aborts a generation by mistake.
+    """
+    check = stream_cancelled_check.get()
+    if check is None:
+        return False
+    try:
+        return check()
+    except Exception:
+        return False
+
 
 PREFIX = "chatsessionstop"
 FENCE_PREFIX = f"{PREFIX}_fence"

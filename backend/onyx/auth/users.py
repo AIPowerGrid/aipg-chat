@@ -2569,6 +2569,23 @@ def get_oauth_router(
                     ErrorCode.LOGIN_BAD_CREDENTIALS,
                 )
 
+            if oauth_client.name == "google" and os.environ.get("AIPG_GRID_API_BASE"):
+                from onyx.llm.aipg.identity_assertion import exchange_google_identity
+                from onyx.llm.aipg.identity_assertion import GridIdentityError
+
+                raw_id_token = cast(dict[str, Any], token).get("id_token")
+                try:
+                    await exchange_google_identity(
+                        str(raw_id_token or ""),
+                        user.id,
+                    )
+                except GridIdentityError as exc:
+                    logger.warning("Canonical Grid Google exchange failed: %s", exc)
+                    raise OnyxError(
+                        OnyxErrorCode.SERVICE_UNAVAILABLE,
+                        "Google sign-in is temporarily unavailable",
+                    )
+
             # Login user
             response = await backend.login(strategy, user)
             await user_manager.on_after_login(user, request, response)

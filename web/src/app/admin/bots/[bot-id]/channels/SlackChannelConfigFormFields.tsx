@@ -483,7 +483,7 @@ export function SlackChannelConfigFormFields({
               <CheckboxField
                 name="show_continue_in_web_ui"
                 label="Show Continue in Web UI button"
-                tooltip="If set, will show a button at the bottom of the response that allows the user to continue the conversation in the Onyx Web UI"
+                tooltip="If set, will show a button at the bottom of the response that allows the user to continue the conversation in the AI Power Grid Web UI"
               />
 
               <CheckboxField

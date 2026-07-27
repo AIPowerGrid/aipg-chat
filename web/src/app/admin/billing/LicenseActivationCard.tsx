@@ -155,7 +155,7 @@ export default function LicenseActivationCard({
           </Button>
         </Section>
         <Text secondaryBody text03>
-          Manually add and activate a license for this Onyx instance.
+          Manually add and activate a license for this AI Power Grid instance.
         </Text>
       </Section>
 
@@ -180,7 +180,7 @@ export default function LicenseActivationCard({
             subDescription={
               error
                 ? undefined
-                : "Paste or attach your license key file you received from Onyx."
+                : "Paste or attach your license key file you received from AI Power Grid."
             }
             withLabel
           >

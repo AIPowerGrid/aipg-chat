@@ -205,7 +205,7 @@ export function VoiceProviderSetupModal({
                     <InputVertical
                       title="Target URI"
                       subDescription={markdown(
-                        "Paste the endpoint shown in [Azure Portal (Keys and Endpoint)](https://portal.azure.com/). Onyx extracts the speech region from this URL. Examples: `https://westus.api.cognitive.microsoft.com/` or `https://westus.tts.speech.microsoft.com/`."
+                        "Paste the endpoint shown in [Azure Portal (Keys and Endpoint)](https://portal.azure.com/). AI Power Grid extracts the speech region from this URL. Examples: `https://westus.api.cognitive.microsoft.com/` or `https://westus.tts.speech.microsoft.com/`."
                       )}
                       withLabel="target_uri"
                     >
@@ -249,7 +249,7 @@ export function VoiceProviderSetupModal({
                       {(detail.ttsModels?.length ?? 0) > 1 && (
                         <InputVertical
                           title="Default Model"
-                          subDescription="This model will be used by Onyx by default for text-to-speech."
+                          subDescription="This model will be used by AI Power Grid by default for text-to-speech."
                           withLabel="tts_model"
                         >
                           <InputSelectField name="tts_model">

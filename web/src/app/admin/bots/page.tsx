@@ -38,8 +38,8 @@ function Main() {
   return (
     <div className="mb-8">
       <p className="mb-2 text-sm text-muted-foreground">
-        Setup Slack bots that connect to Onyx. Once setup, you will be able to
-        ask questions to Onyx directly from Slack. Additionally, you can:
+        Setup Slack bots that connect to AI Power Grid. Once setup, you will be able to
+        ask questions to AI Power Grid directly from Slack. Additionally, you can:
       </p>
 
       <div className="mb-2">
@@ -67,7 +67,7 @@ function Main() {
         >
           guide{" "}
         </a>
-        found in the Onyx documentation to get started!
+        found in the AI Power Grid documentation to get started!
       </p>
 
       <Button

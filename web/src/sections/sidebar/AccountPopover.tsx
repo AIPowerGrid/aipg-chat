@@ -179,7 +179,7 @@ function SettingsPopover({
             orientation="reverse"
             icon={SvgOnyxLogo}
             title={markdown(
-              `[Onyx ${
+              `[AI Power Grid ${
                 settings?.webVersion ?? "dev"
               }](https://docs.onyx.app/changelog)`
             )}

@@ -416,7 +416,7 @@ Manual EC2 smoke:
 | `d881a81a03` | `refactor(craft): simplify exec helpers and sandbox manager` | open in same stack |
 | `1465bd7a61` | `chore(craft): drop CRAFT_ALLOW_UNBLOCKED_IMDS opt-out` | open in same stack |
 | `e1d5bd22db` | `chore(craft): remove SANDBOX_DOCKER_BLOCK_IMDS` | open in same stack |
-| `d94321e924` | `refactor(craft): shared ACPExecClient base across K8s + Docker` | open on `docker-compose-3` (#11225) — tracked separately in [`shared-acp-exec-client.md`](./shared-acp-exec-client.md) |
+| `d94321e924` | `refactor(craft): shared ACPExecClient base across K8s + Docker` | open on `docker-compose-3` (#11225) — tracked separately in [`shared-acp-exec-client.md`](./streaming/shared-acp-exec-client.md) |
 | `2c49919b10` | `docs(craft): document docker sandbox backend` | open on `docker-compose-2b` |
 
 PR 3 (compose/install/env wiring) shipped inside the same PR as PR 2 (`d08a5ee078`) rather than as a separate PR. PR 4 split into the IMDS-guard simplification commits (`1465bd7a61` + `e1d5bd22db`) and the docs commit (`2c49919b10`).

@@ -85,7 +85,7 @@ function VertexAIModalInternals({
             <InputVertical
               withLabel={FIELD_VERTEX_AUTH_METHOD}
               title="Authentication Method"
-              subDescription="Choose how Onyx should authenticate with Google Vertex AI."
+              subDescription="Choose how AI Power Grid should authenticate with Google Vertex AI."
             >
               <InputSelectField name={FIELD_VERTEX_AUTH_METHOD}>
                 <InputSelect.Trigger />
@@ -137,7 +137,7 @@ function VertexAIModalInternals({
           <InputPadder>
             <MessageCard
               variant="info"
-              title="Onyx will use the pod's ambient Google Cloud credentials (via google.auth.default). Ensure the Kubernetes ServiceAccount is bound to a GCP Service Account with access to Vertex AI."
+              title="AI Power Grid will use the pod's ambient Google Cloud credentials (via google.auth.default). Ensure the Kubernetes ServiceAccount is bound to a GCP Service Account with access to Vertex AI."
             />
           </InputPadder>
           <Card background="light" border="none" padding="sm">

@@ -77,7 +77,7 @@ const Page = async (props: {
               {cloud ? "Complete your sign up" : "Create account"}
             </Text>
             <Text as="p" text03>
-              Get started with Onyx
+              Get started with AI Power Grid
             </Text>
           </div>
           {cloud && authUrl && (

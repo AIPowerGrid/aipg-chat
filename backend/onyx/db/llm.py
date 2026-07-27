@@ -1,3 +1,5 @@
+from typing import NamedTuple
+
 from sqlalchemy import delete
 from sqlalchemy import or_
 from sqlalchemy import select
@@ -410,6 +412,124 @@ def sync_model_configurations(
         db_session.commit()
 
     return new_count
+
+
+class GridModelReconcileResult(NamedTuple):
+    added: int
+    shown: int
+    hidden: int
+    default_model: str | None
+
+
+def reconcile_grid_model_configurations(
+    db_session: Session,
+    provider_name: str,
+    models: list[SyncModelEntry],
+) -> GridModelReconcileResult:
+    """Make a dynamic grid provider's visible models match the live `/v1/models` list.
+
+    Unlike `sync_model_configurations` (additive, hidden-by-default for admin
+    curation), the AIPG grid treats its live model list as the source of truth and
+    surfaces models in the chat dropdown automatically:
+
+    - New models are inserted as visible.
+    - Existing models still on the grid are made visible and have their metadata
+      refreshed; an admin `custom_display_name` override is preserved.
+    - Models no longer on the grid are hidden (never deleted), so the dropdown follows
+      the grid while keeping the row + flows for history / quick re-enable.
+    - If the current default CHAT model is no longer offered by the grid (and the
+      default is unset or already grid-owned), it is reassigned to the first available
+      grid model so the provider stays usable. A default owned by another provider is
+      left untouched.
+
+    The caller must not pass an empty `models` list on a transient empty response —
+    that would hide every model. All changes are committed in a single transaction.
+    """
+    provider = fetch_existing_llm_provider(name=provider_name, db_session=db_session)
+    if not provider:
+        raise ValueError(f"LLM Provider '{provider_name}' not found")
+
+    grid_names = {m.name for m in models}
+    existing_by_name = {mc.name: mc for mc in provider.model_configurations}
+
+    added = 0
+    shown = 0
+    hidden = 0
+
+    for model in models:
+        supported_flows = [LLMModelFlowType.CHAT]
+        if model.supports_image_input:
+            supported_flows.append(LLMModelFlowType.VISION)
+        if model.supports_reasoning:
+            supported_flows.append(LLMModelFlowType.REASONING)
+
+        existing = existing_by_name.get(model.name)
+        if existing:
+            if not existing.is_visible:
+                shown += 1
+            update_model_configuration__no_commit(
+                db_session=db_session,
+                model_configuration_id=existing.id,
+                supported_flows=supported_flows,
+                is_visible=True,
+                max_input_tokens=model.max_input_tokens,
+                display_name=model.display_name,
+                # Preserve an admin-specified display override.
+                custom_display_name=existing.custom_display_name,
+            )
+        else:
+            insert_new_model_configuration__no_commit(
+                db_session=db_session,
+                llm_provider_id=provider.id,
+                model_name=model.name,
+                supported_flows=supported_flows,
+                is_visible=True,
+                max_input_tokens=model.max_input_tokens,
+                display_name=model.display_name,
+            )
+            added += 1
+
+    # Hide models the grid no longer offers (keep the row + flows for re-enable).
+    for name, mc in existing_by_name.items():
+        if name not in grid_names and mc.is_visible:
+            update_model_configuration__no_commit(
+                db_session=db_session,
+                model_configuration_id=mc.id,
+                supported_flows=mc.llm_model_flow_types,
+                is_visible=False,
+                max_input_tokens=mc.max_input_tokens,
+                display_name=mc.display_name,
+                custom_display_name=mc.custom_display_name,
+            )
+            hidden += 1
+
+    db_session.flush()
+
+    # Ensure a usable default CHAT model exists for the grid provider.
+    default_model = fetch_default_llm_model(db_session)
+    default_is_valid = (
+        default_model is not None
+        and default_model.llm_provider_id == provider.id
+        and default_model.name in grid_names
+    )
+    chosen_default = default_model.name if default_model else None
+    if not default_is_valid and grid_names:
+        # Only (re)assign when the default is missing or already grid-owned; never
+        # steal the global default from another configured provider.
+        if default_model is None or default_model.llm_provider_id == provider.id:
+            chosen_default = sorted(grid_names)[0]
+            _update_default_model__no_commit(
+                db_session=db_session,
+                provider_id=provider.id,
+                model=chosen_default,
+                flow_type=LLMModelFlowType.CHAT,
+            )
+
+    db_session.commit()
+
+    return GridModelReconcileResult(
+        added=added, shown=shown, hidden=hidden, default_model=chosen_default
+    )
 
 
 def fetch_existing_embedding_providers(

@@ -1,6 +1,7 @@
 import copy
 import os
 import threading
+from collections.abc import Callable
 from collections.abc import Iterator
 from contextlib import contextmanager
 from contextlib import nullcontext
@@ -305,6 +306,7 @@ class LitellmLLM(LLM):
         temperature: float | None = None,
         custom_config: dict[str, str] | None = None,
         extra_headers: dict[str, str] | None = None,
+        extra_headers_factory: Callable[[], dict[str, str]] | None = None,
         extra_body: dict | None = LITELLM_EXTRA_BODY,
         model_kwargs: dict[str, Any] | None = None,
     ):
@@ -328,6 +330,7 @@ class LitellmLLM(LLM):
         self._custom_llm_provider = custom_llm_provider
         self._max_input_tokens = max_input_tokens
         self._custom_config = custom_config
+        self._extra_headers_factory = extra_headers_factory
 
         # Create a dictionary for model-specific arguments if it's None
         model_kwargs = model_kwargs or {}
@@ -668,6 +671,12 @@ class LitellmLLM(LLM):
             model_kwargs=self._model_kwargs,
             user_identity=user_identity,
         )
+        if self._extra_headers_factory is not None:
+            if passthrough_kwargs is self._model_kwargs:
+                passthrough_kwargs = copy.deepcopy(self._model_kwargs)
+            request_headers = dict(passthrough_kwargs.get("extra_headers") or {})
+            request_headers.update(self._extra_headers_factory())
+            passthrough_kwargs["extra_headers"] = request_headers
 
         # OpenRouter: inject session_id and user into extra_body.
         #
@@ -908,6 +917,8 @@ class LitellmLLM(LLM):
         reasoning_effort: ReasoningEffort = ReasoningEffort.AUTO,
         user_identity: LLMUserIdentity | None = None,
     ) -> Iterator[ModelResponseStream]:
+        import time
+
         from litellm import CustomStreamWrapper as LiteLLMCustomStreamWrapper
         from litellm import HTTPHandler
         from litellm.exceptions import APIConnectionError as LiteLLMAPIConnectionError
@@ -917,7 +928,29 @@ class LitellmLLM(LLM):
         )
         from litellm.exceptions import Timeout as LiteLLMTimeout
 
+        from onyx.chat.stop_signal_checker import stream_cancelled_check
         from onyx.llm.model_response import from_litellm_model_response_stream
+
+        # User-stop hook (set per worker thread in process_message). When it
+        # fires mid-stream we stop iterating and force the underlying connection
+        # closed so the grid worker stops generating, rather than draining the
+        # response to completion. Throttled so we poll the cache at most ~2x/sec.
+        cancelled_check = stream_cancelled_check.get()
+        STREAM_CANCEL_POLL_S = 0.5
+
+        def _force_close_stream(stream_response: Any) -> None:
+            # CustomStreamWrapper has no sync close(); close the raw provider
+            # stream it wraps (openai Stream / httpx response both expose close).
+            raw = getattr(stream_response, "completion_stream", None)
+            for obj in (raw, getattr(raw, "response", None)):
+                closer = getattr(obj, "close", None)
+                if callable(closer):
+                    try:
+                        closer()
+                    except Exception:
+                        logger.debug(
+                            "upstream stream close on cancel failed", exc_info=True
+                        )
 
         retryable_exceptions = (
             LiteLLMTimeout,
@@ -980,7 +1013,23 @@ class LitellmLLM(LLM):
                     ),
                 )
 
+                last_cancel_check = time.monotonic()
                 for chunk in response:
+                    # Honor a user-initiated stop without draining the rest of
+                    # the upstream response (which keeps the grid worker busy and
+                    # can surface a post-cancel error). Poll is time-throttled.
+                    if cancelled_check is not None:
+                        now = time.monotonic()
+                        if now - last_cancel_check >= STREAM_CANCEL_POLL_S:
+                            last_cancel_check = now
+                            try:
+                                cancelled = cancelled_check()
+                            except Exception:
+                                cancelled = False
+                            if cancelled:
+                                _force_close_stream(response)
+                                return
+
                     model_response = from_litellm_model_response_stream(chunk)
 
                     # Track LLM cost when usage info is available (typically in the last chunk)

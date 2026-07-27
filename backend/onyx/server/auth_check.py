@@ -38,6 +38,8 @@ PUBLIC_ENDPOINT_SPECS = [
     ("/auth/refresh", {"POST"}),
     ("/auth/register", {"POST"}),
     ("/auth/login", {"POST"}),
+    ("/auth/wallet/nonce", {"POST"}),
+    ("/auth/wallet/verify", {"POST"}),
     # reCAPTCHA pre-OAuth challenge — user is not yet authenticated when
     # they solve it, and the endpoint's own handler enforces the only
     # thing that matters (valid Google siteverify response).

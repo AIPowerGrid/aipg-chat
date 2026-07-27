@@ -1,5 +1,10 @@
 # Onyx Chrome Extension
 
+> **Upstream development extension, not an AIPG store release.** The manifest
+> currently requests `<all_urls>` host access and injects a content script on
+> every page. Treat that as a privileged prototype requiring a dedicated
+> privacy/permission review before AIPG branding or distribution.
+
 The Onyx chrome extension lets you research, create, and automate with LLMs powered by your team's unique knowledge. Just hit Ctrl + O on Mac or Alt + O on Windows to instantly access Onyx in your browser:
 
 💡 Know what your company knows, instantly with the Onyx sidebar

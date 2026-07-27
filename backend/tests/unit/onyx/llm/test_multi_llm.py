@@ -146,6 +146,42 @@ def default_multi_llm() -> LitellmLLM:
     )
 
 
+def test_extra_headers_factory_runs_for_each_completion_attempt() -> None:
+    counter = 0
+
+    def headers() -> dict[str, str]:
+        nonlocal counter
+        counter += 1
+        return {"X-Grid-User-Assertion": f"assertion-{counter}"}
+
+    llm = LitellmLLM(
+        api_key="test_key",
+        timeout=30,
+        model_provider=LlmProviderNames.OPENAI_COMPATIBLE,
+        model_name="grid-model",
+        api_base="https://api.aipowergrid.io/v1",
+        max_input_tokens=4096,
+        extra_headers={"X-Trace": "ok"},
+        extra_headers_factory=headers,
+    )
+    messages: LanguageModelInput = [UserMessage(content="Hi")]
+    with patch("litellm.completion") as mock_completion:
+        mock_completion.return_value = []
+        list(llm.stream(messages))
+        first_headers = mock_completion.call_args.kwargs["extra_headers"]
+        list(llm.stream(messages))
+        second_headers = mock_completion.call_args.kwargs["extra_headers"]
+
+    assert first_headers == {
+        "X-Trace": "ok",
+        "X-Grid-User-Assertion": "assertion-1",
+    }
+    assert second_headers == {
+        "X-Trace": "ok",
+        "X-Grid-User-Assertion": "assertion-2",
+    }
+
+
 def test_multiple_tool_calls(default_multi_llm: LitellmLLM) -> None:
     # Mock the litellm.completion function
     with patch("litellm.completion") as mock_completion:

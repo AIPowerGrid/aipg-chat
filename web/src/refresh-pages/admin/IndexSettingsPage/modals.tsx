@@ -349,7 +349,7 @@ function AzureProviderModal({
           subDescription="The deployment name you configured for this embedding model in Azure."
         />
 
-        <ModelSpecFields modelNameSubDescription="A label for this model in Onyx. Azure routes requests by deployment name, so this only needs to be a unique identifier." />
+        <ModelSpecFields modelNameSubDescription="A label for this model in AI Power Grid. Azure routes requests by deployment name, so this only needs to be a unique identifier." />
       </ModalShell>
     </Formik>
   );
@@ -434,7 +434,7 @@ function LiteLLMProviderModal({
         <ApiKeyField provider={provider} />
 
         <ModelSpecFields
-          modelNameSubDescription={`Onyx will connect to this model on your ${provider.displayName} proxy.`}
+          modelNameSubDescription={`AI Power Grid will connect to this model on your ${provider.displayName} proxy.`}
         />
       </ModalShell>
     </Formik>

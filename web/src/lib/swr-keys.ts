@@ -30,6 +30,10 @@ export const SWR_KEYS = {
   adminAgents: "/api/admin/agents",
   adminPersona: "/api/admin/persona",
 
+  // ── AIPG Grid status (fork) ───────────────────────────────────────────────
+  gridWorkers: "/api/grid/workers",
+  gridModelStatus: "/api/grid/models",
+
   // ── LLM Providers ─────────────────────────────────────────────────────────
   llmProviders: "/api/llm/provider",
   llmProvidersForPersona: (personaId: number) =>

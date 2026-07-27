@@ -247,7 +247,7 @@ const AppSidebar = memo(function AppSidebarInner() {
   const [showMoveCustomAgentModal, setShowMoveCustomAgentModal] =
     useState(false);
 
-  // Check if Onyx Craft is enabled via settings (backed by PostHog feature flag)
+  // Check if AI Power Grid Craft is enabled via settings (backed by PostHog feature flag)
   // Only explicit true enables the feature; false or undefined = disabled
   const isOnyxCraftEnabled =
     combinedSettings?.settings?.onyx_craft_enabled === true;
@@ -257,7 +257,7 @@ const AppSidebar = memo(function AppSidebarInner() {
     enabled: isOnyxCraftEnabled,
   });
 
-  // Find build_mode feature announcement notification (only if Onyx Craft is enabled)
+  // Find build_mode feature announcement notification (only if AI Power Grid Craft is enabled)
   const buildModeNotification = isOnyxCraftEnabled
     ? notifications?.find(
         (n) =>

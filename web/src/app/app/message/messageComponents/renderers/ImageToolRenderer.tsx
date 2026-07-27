@@ -77,7 +77,11 @@ export const ImageToolRenderer: MessageRenderer<
           content: (
             <div className="flex flex-col">
               <div>
-                <GeneratingImageDisplay isCompleted={false} />
+                {/* Shape isn't known until the image lands (the start packet
+                    carries none), so default to portrait — the Krea 2 Turbo
+                    default — so the box matches the common output and the image
+                    drops into the same footprint. */}
+                <GeneratingImageDisplay isCompleted={false} shape="portrait" />
               </div>
             </div>
           ),

@@ -1,5 +1,11 @@
 # Onyx Chat Widget
 
+> **Upstream/experimental surface, not a hosted AIPG widget release.** AIPG does
+> not currently publish the CDN URL shown below or a production widget-key
+> issuance policy. Because any key embedded in a page is public, do not deploy
+> this against AIPG Chat until the backend enforces a revocable, origin-bound,
+> rate-limited, chat-only credential and tenant/persona policy.
+
 An embeddable, lightweight chat widget that brings AI-powered conversations to any website. Built with [Lit](https://lit.dev/) web components for maximum compatibility and minimal bundle size.
 
 ## Security Note
@@ -20,7 +26,7 @@ An embeddable, lightweight chat widget that brings AI-powered conversations to a
 
 ## Quick Start
 
-### Cloud Deployment (Recommended)
+### Upstream Cloud Example (Not an AIPG Deployment)
 
 Add these two lines to your website:
 

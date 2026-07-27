@@ -334,7 +334,7 @@ export default function BuildOnboardingModal({
             />
           )}
 
-          {/* Page 1 - What is Onyx Craft? */}
+          {/* Page 1 - What is AI Power Grid Craft? */}
           {currentStep === "page1" && <OnboardingInfoPages step="page1" />}
 
           {/* Navigation buttons */}

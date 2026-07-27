@@ -109,6 +109,7 @@ def search(
         llm = llm_from_provider(
             model_name=cast(str, request.model),
             llm_provider=llm_provider_view,
+            user=user,
         )
     elif persona is not None:
         llm = get_llm_for_persona(persona, user)

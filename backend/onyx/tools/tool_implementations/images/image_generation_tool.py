@@ -47,7 +47,14 @@ REFERENCE_IMAGE_FILE_IDS_FIELD = "reference_image_file_ids"
 
 class ImageGenerationTool(Tool[None]):
     NAME = "generate_image"
-    DESCRIPTION = "Generate an image based on a prompt. Do not use unless the user specifically requests an image."
+    DESCRIPTION = (
+        "Generate an image from a prompt using the Krea 2 Turbo model on the AI Power Grid. "
+        "Do not use unless the user specifically requests an image. "
+        "This in-chat generator is fast but intentionally simple (one model, standard sizes). "
+        "If the user wants a different image model (e.g. z-image), fine-grained controls "
+        "(steps, guidance, seeds, LoRAs), higher resolution, or VIDEO generation, let them know "
+        "they can use the full AI Power Grid studio at https://aipg.art."
+    )
     DISPLAY_NAME = "Image Generation"
 
     def __init__(
@@ -170,15 +177,13 @@ class ImageGenerationTool(Tool[None]):
         reference_images: list[ReferenceImage] | None = None,
     ) -> tuple[ImageGenerationResponse, Any]:
         if shape == ImageShape.LANDSCAPE:
-            if "gpt-image-" in self.model:
-                size = "1536x1024"
-            else:
-                size = "1792x1024"
+            # AIPG grid recipes cap any dimension at 1536 and REJECT (not clamp)
+            # an out-of-band size, so the old DALL-E 1792 longside 422s the grid.
+            # 1536-longside is grid-valid (multiple of 64, within MIN/MAX_DIM) and
+            # also matches gpt-image's native sizes, so use it for every model.
+            size = "1536x1024"
         elif shape == ImageShape.PORTRAIT:
-            if "gpt-image-" in self.model:
-                size = "1024x1536"
-            else:
-                size = "1024x1792"
+            size = "1024x1536"
         else:
             size = "1024x1024"
         logger.debug("Generating image with model: %s, size: %s", self.model, size)
@@ -199,6 +204,18 @@ class ImageGenerationTool(Tool[None]):
             image_item = response.data[0].model_dump()
 
             image_data = image_item.get("b64_json")
+            if not image_data:
+                # The AIPG grid returns a hosted `url` by default (litellm drops
+                # our response_format=b64_json for unregistered grid models). Fall
+                # back to fetching that URL and encoding it, so the rest of the
+                # pipeline (which stores base64) is unaffected.
+                image_url = image_item.get("url")
+                if image_url:
+                    import base64 as _b64
+
+                    img_resp = requests.get(image_url, timeout=30)
+                    img_resp.raise_for_status()
+                    image_data = _b64.b64encode(img_resp.content).decode()
             if not image_data:
                 raise RuntimeError("No base64 image data returned from the API")
 
@@ -360,7 +377,10 @@ class ImageGenerationTool(Tool[None]):
                 ),
             )
         prompt = cast(str, llm_kwargs[PROMPT_FIELD])
-        shape = ImageShape(llm_kwargs.get("shape", ImageShape.SQUARE.value))
+        # Default to portrait when the model doesn't specify a shape — most chat
+        # image asks (people, characters, posters) read better tall, and it's a
+        # grid-valid size. The LLM can still pick square/landscape explicitly.
+        shape = ImageShape(llm_kwargs.get("shape", ImageShape.PORTRAIT.value))
         reference_image_file_ids = self._resolve_reference_image_file_ids(
             llm_kwargs=llm_kwargs,
         )
