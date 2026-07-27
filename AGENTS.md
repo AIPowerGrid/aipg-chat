@@ -56,7 +56,10 @@ OpenAI-compatible model provider while retaining the broader Onyx application.
 - `AUTH_TYPE=basic` intentionally supports Google, wallet, and email together.
   Google is enabled only when both `GOOGLE_OAUTH_CLIENT_ID` and
   `GOOGLE_OAUTH_CLIENT_SECRET` are present; Core's `aipg-chat` service policy
-  must allow that exact client ID and `aipg.chat` as its SIWE domain.
+  must allow that exact client ID and `aipg.chat` as its SIWE domain. The Google
+  web client uses `https://aipg.chat` as its JavaScript origin and
+  `https://aipg.chat/auth/oauth/callback` as its redirect URI. The latter is a
+  Next route that proxies FastAPI; do not register an `/api/...` callback.
 - Secrets, session credentials, connector tokens, Grid keys, and sandbox access
   tokens never enter client bundles, docs, or logs.
 - Craft/build execution is an untrusted-code boundary. Preserve auth, project
