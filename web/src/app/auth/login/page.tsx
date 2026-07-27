@@ -72,7 +72,12 @@ export default async function Page(props: PageProps) {
   let authUrl: string | null = null;
   if (authTypeMetadata) {
     try {
-      authUrl = await getAuthUrlSS(authTypeMetadata.authType, nextUrl);
+      const authUrlType =
+        authTypeMetadata.authType === AuthType.BASIC &&
+        authTypeMetadata.oauthEnabled
+          ? AuthType.GOOGLE_OAUTH
+          : authTypeMetadata.authType;
+      authUrl = await getAuthUrlSS(authUrlType, nextUrl);
     } catch (e) {
       console.log(`Some fetch failed for the login page - ${e}`);
     }

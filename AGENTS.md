@@ -53,6 +53,10 @@ OpenAI-compatible model provider while retaining the broader Onyx application.
   Core-issued SIWE proofs are sent server-to-server to Core, which owns proof
   verification and account linking. Chat never accepts a browser-supplied app
   subject. `AIPG_CHAT_INSTANCE_ID` separates non-user system calls.
+- `AUTH_TYPE=basic` intentionally supports Google, wallet, and email together.
+  Google is enabled only when both `GOOGLE_OAUTH_CLIENT_ID` and
+  `GOOGLE_OAUTH_CLIENT_SECRET` are present; Core's `aipg-chat` service policy
+  must allow that exact client ID and `aipg.chat` as its SIWE domain.
 - Secrets, session credentials, connector tokens, Grid keys, and sandbox access
   tokens never enter client bundles, docs, or logs.
 - Craft/build execution is an untrusted-code boundary. Preserve auth, project
