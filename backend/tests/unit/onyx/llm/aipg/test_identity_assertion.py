@@ -184,6 +184,36 @@ async def test_google_exchange_binds_server_derived_local_subject(monkeypatch) -
 
 
 @pytest.mark.asyncio
+async def test_google_exchange_invalidates_pre_link_token(monkeypatch) -> None:
+    async def fake_post(_path, _payload):
+        return {"access_token": "gridu_google", "account_id": "account-1"}
+
+    monkeypatch.setattr(identity_assertion, "_post_identity", fake_post)
+    subject = "aipg-chat:local-user-id"
+    with identity_assertion._cache_lock:
+        identity_assertion._token_cache[f"{'a' * 64}:{subject}"] = (
+            "gridu_pre_link",
+            time.monotonic() + 600,
+        )
+        identity_assertion._token_cache[f"{'b' * 64}:other-subject"] = (
+            "gridu_other",
+            time.monotonic() + 600,
+        )
+
+    await identity_assertion.exchange_google_identity(
+        "google-id-token",
+        "local-user-id",
+    )
+
+    with identity_assertion._cache_lock:
+        assert all(
+            key.partition(":")[2] != subject
+            for key in identity_assertion._token_cache
+        )
+        assert f"{'b' * 64}:other-subject" in identity_assertion._token_cache
+
+
+@pytest.mark.asyncio
 async def test_wallet_proof_then_local_bind_use_same_service(monkeypatch) -> None:
     monkeypatch.setenv("WEB_DOMAIN", "https://aipg.chat")
     calls = []
@@ -229,3 +259,25 @@ async def test_wallet_proof_then_local_bind_use_same_service(monkeypatch) -> Non
             "user_token": "gridu_wallet",
         },
     )
+
+
+@pytest.mark.asyncio
+async def test_local_bind_invalidates_pre_link_token(monkeypatch) -> None:
+    async def fake_post(_path, _payload):
+        return {"status": "linked", "account_id": "account-1"}
+
+    monkeypatch.setattr(identity_assertion, "_post_identity", fake_post)
+    subject = "aipg-chat:local-user-id"
+    with identity_assertion._cache_lock:
+        identity_assertion._token_cache[f"{'a' * 64}:{subject}"] = (
+            "gridu_pre_link",
+            time.monotonic() + 600,
+        )
+
+    await identity_assertion.bind_local_identity(
+        "gridu_wallet",
+        "local-user-id",
+    )
+
+    with identity_assertion._cache_lock:
+        assert not identity_assertion._token_cache

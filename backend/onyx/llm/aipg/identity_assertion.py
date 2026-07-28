@@ -46,6 +46,18 @@ def _grid_config(api_key: str | None = None) -> tuple[str, str]:
     return base, key
 
 
+def _invalidate_subject_tokens(subject: str) -> None:
+    """Drop cached Core tokens after a proof changes the subject's account."""
+    with _cache_lock:
+        stale = [
+            cache_key
+            for cache_key in _token_cache
+            if cache_key.partition(":")[2] == subject
+        ]
+        for cache_key in stale:
+            _token_cache.pop(cache_key, None)
+
+
 def _app_subject(user: User | None) -> str | None:
     if user is None:
         instance = os.environ.get("AIPG_CHAT_INSTANCE_ID", "default").strip()
@@ -148,15 +160,18 @@ async def _post_identity(path: str, payload: dict[str, Any]) -> dict[str, Any]:
 async def exchange_google_identity(id_token: str, user_id: object) -> dict[str, Any]:
     if not id_token:
         raise GridIdentityError("Google login did not return an ID token")
-    return _require_identity(
+    subject = f"aipg-chat:{user_id}"
+    identity = _require_identity(
         await _post_identity(
             "/auth/google/exchange",
             {
                 "id_token": id_token,
-                "app_subject": f"aipg-chat:{user_id}",
+                "app_subject": subject,
             },
         )
     )
+    _invalidate_subject_tokens(subject)
+    return identity
 
 
 async def wallet_challenge(address: str) -> dict[str, Any]:
@@ -207,13 +222,16 @@ async def exchange_wallet_identity(
 
 
 async def bind_local_identity(user_token: str, user_id: object) -> dict[str, Any]:
-    return await _post_identity(
+    subject = f"aipg-chat:{user_id}"
+    result = await _post_identity(
         "/auth/service/bind",
         {
-            "subject": f"aipg-chat:{user_id}",
+            "subject": subject,
             "user_token": user_token,
         },
     )
+    _invalidate_subject_tokens(subject)
+    return result
 
 
 def grid_identity_headers(

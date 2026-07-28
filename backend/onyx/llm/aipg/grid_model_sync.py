@@ -34,15 +34,19 @@ logger = setup_logger()
 
 
 def _ensure_grid_provider(db_session: Session) -> None:
-    """Seed the managed grid provider from env config if it doesn't exist yet.
+    """Seed or reconcile the environment-owned Grid provider connection.
 
-    Only creates when missing — an existing provider's credentials and settings are left
-    exactly as the admin configured them; this service only refreshes its model list.
+    Models remain dynamically reconciled below, while the provider URL and
+    service credential are authoritative deployment configuration. Leaving an
+    older admin-configured key here can bypass delegated user identity and
+    attribute inference to the key owner's account.
     """
     existing = fetch_existing_llm_provider(
         name=AIPG_GRID_PROVIDER_NAME, db_session=db_session
     )
     if existing is not None:
+        existing.api_base = AIPG_GRID_API_BASE
+        existing.api_key = AIPG_GRID_API_KEY  # ty: ignore[invalid-assignment]
         return
 
     logger.info(

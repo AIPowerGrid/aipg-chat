@@ -147,6 +147,32 @@ def test_new_model_appears_visible_on_next_sync(
     assert visibility == {"grid/model-a": True, "grid/model-b": True}
 
 
+def test_existing_managed_provider_reconciles_connection_from_env(
+    db_session: Session,
+    provider_name: str,
+    monkeypatch: MonkeyPatch,
+) -> None:
+    _configure_grid(monkeypatch, provider_name)
+    _mock_grid_models(monkeypatch, [_entry("grid/model-a")])
+    sync_grid_models(db_session)
+
+    provider = fetch_existing_llm_provider(
+        name=provider_name,
+        db_session=db_session,
+    )
+    assert provider is not None
+    provider.api_base = "http://old-grid.internal/v1"
+    provider.api_key = "old-user-key"  # ty: ignore[invalid-assignment]
+    db_session.commit()
+
+    sync_grid_models(db_session)
+
+    db_session.refresh(provider)
+    assert provider.api_base == "https://grid.example/v1"
+    assert provider.api_key is not None
+    assert provider.api_key.get_value(apply_mask=False) == "grid-test-key"
+
+
 def test_default_reassigned_when_current_default_dropped(
     db_session: Session,
     provider_name: str,
