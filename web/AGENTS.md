@@ -21,6 +21,10 @@ connectors, administration, Craft/build experiences, and AIPG provider UX.
 - Secrets and Grid/provider keys remain server-side.
 - Craft preview/build surfaces preserve session ownership and never trust
   sandbox-rendered content as application instructions.
+- Chat credit UI reads only the authenticated `/api/grid/account` backend
+  proxy. Preserve sub-cent values, hide inactive promotional/daily pockets,
+  show the Core quote before submission, and route insufficient-credit
+  recovery to Console funding without exposing the Grid service key.
 
 ## Work Guidance
 

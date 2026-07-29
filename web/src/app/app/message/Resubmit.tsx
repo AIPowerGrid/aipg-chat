@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { SvgChevronDown, SvgChevronRight } from "@opal/icons";
+import { SvgChevronDown, SvgChevronRight, SvgWallet } from "@opal/icons";
 import { Button } from "@opal/components";
 import { CopyButton } from "@opal/components";
 import { getErrorIcon, getErrorTitle } from "./errorHelpers";
+import { GRID_FUNDING_URL } from "@/lib/grid/money";
+import { isGridCreditError } from "@/lib/grid/quote";
 
 interface ResubmitProps {
   resubmit: () => void;
@@ -36,6 +38,7 @@ export const ErrorBanner = ({
   resubmit?: () => void;
 }) => {
   const [isStackTraceExpanded, setIsStackTraceExpanded] = useState(false);
+  const needsGridFunding = isGridCreditError(error);
 
   return (
     <div className="text-red-700 mt-4 text-sm my-auto">
@@ -79,7 +82,15 @@ export const ErrorBanner = ({
           )}
         </AlertDescription>
       </Alert>
-      {isRetryable && resubmit && <Resubmit resubmit={resubmit} />}
+      {needsGridFunding ? (
+        <div className="mt-3 flex justify-center">
+          <Button href={GRID_FUNDING_URL} icon={SvgWallet}>
+            Add credits
+          </Button>
+        </div>
+      ) : (
+        isRetryable && resubmit && <Resubmit resubmit={resubmit} />
+      )}
     </div>
   );
 };

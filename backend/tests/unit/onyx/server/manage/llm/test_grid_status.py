@@ -37,6 +37,8 @@ def test_grid_account_uses_delegated_token_and_normalizes_response(
             json={
                 "account_id": "account-1",
                 "paid": {"balance_usd": 12.5},
+                "promotional": {"remaining_usd": 0.25, "active": True},
+                "free": {"remaining_usd": 0.1, "active": False},
                 "total_spendable_usd": 13.0,
                 "total_preview_usd": 13.25,
                 "charging_enabled": False,
@@ -50,6 +52,10 @@ def test_grid_account_uses_delegated_token_and_normalizes_response(
     assert grid_status.get_grid_account(_user()) == {
         "account_id": "account-1",
         "paid_balance_usd": 12.5,
+        "promotional_balance_usd": 0.25,
+        "promotional_active": True,
+        "daily_balance_usd": 0.1,
+        "daily_active": False,
         "total_spendable_usd": 13.0,
         "total_preview_usd": 13.25,
         "charging_enabled": False,
@@ -73,6 +79,8 @@ def test_grid_account_rejects_incomplete_core_response(
         lambda _path, _user: {
             "account_id": "account-1",
             "paid": {},
+            "promotional": {},
+            "free": {},
             "charging_enabled": False,
         },
     )
@@ -98,3 +106,89 @@ def test_grid_account_hides_upstream_error_details(
 
     assert exc.value.error_code is OnyxErrorCode.BAD_GATEWAY
     assert "secret internal host" not in exc.value.detail
+
+
+def test_grid_text_quote_counts_prompt_and_context_and_uses_delegated_token(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls: list[tuple[str, dict]] = []
+    monkeypatch.setattr(grid_status, "grid_user_token", lambda _user: "gridu_user")
+    monkeypatch.setattr(
+        grid_status._quote_tokenizer,
+        "encode",
+        lambda prompt: [1, 2, 3] if prompt == "hello grid" else [],
+    )
+
+    def fake_post(url: str, **kwargs) -> httpx.Response:
+        calls.append((url, kwargs))
+        request = httpx.Request("POST", url)
+        return httpx.Response(
+            200,
+            json={
+                "account_id": "account-1",
+                "total_spendable_usd": 0.02,
+                "charging_enabled": True,
+                "estimate": {
+                    "priced": True,
+                    "cost_usd": 0.0049,
+                    "balance_sufficient": True,
+                },
+            },
+            request=request,
+        )
+
+    monkeypatch.setattr(grid_status.httpx, "post", fake_post)
+
+    result = grid_status.get_grid_text_quote(
+        grid_status.GridTextQuoteRequest(
+            model="gpt-oss-120b",
+            prompt="hello grid",
+            context_tokens=7,
+            max_tokens=2048,
+        ),
+        _user(),
+    )
+
+    assert result["estimate"]["cost_usd"] == 0.0049
+    assert calls == [
+        (
+            "https://api.aipowergrid.io/v1/account/credits/quote",
+            {
+                "headers": {
+                    "apikey": "grid_service_key",
+                    "X-Grid-User-Token": "gridu_user",
+                    "X-Title": "AIPG Chat",
+                },
+                "json": {
+                    "model": "gpt-oss-120b",
+                    "modality": "text",
+                    "prompt_tokens": 10,
+                    "max_tokens": 2048,
+                },
+                "timeout": 8.0,
+            },
+        )
+    ]
+
+
+def test_grid_text_quote_rejects_extra_or_oversized_inputs() -> None:
+    assert (
+        grid_status.GridTextQuoteRequest(
+            model="gpt-oss-120b",
+            prompt="hello",
+        ).max_tokens
+        == 32_768
+    )
+    with pytest.raises(ValueError):
+        grid_status.GridTextQuoteRequest(
+            model="gpt-oss-120b",
+            prompt="hello",
+            context_tokens=0,
+            unexpected=True,
+        )
+    with pytest.raises(ValueError):
+        grid_status.GridTextQuoteRequest(
+            model="gpt-oss-120b",
+            prompt="hello",
+            context_tokens=2_000_001,
+        )

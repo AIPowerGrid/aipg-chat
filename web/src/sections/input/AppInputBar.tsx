@@ -70,6 +70,13 @@ import {
 } from "@/app/app/stores/useChatSessionStore";
 import QueuedMessageBar from "@/sections/input/QueuedMessageBar";
 import { handleInputNavKeys } from "@/sections/input/inputBarKeys";
+import { GridTextQuote } from "@/lib/grid/interfaces";
+import { formatGridUSD, GRID_FUNDING_URL } from "@/lib/grid/money";
+import {
+  gridQuoteBlocksGeneration,
+  gridQuoteNeedsFunding,
+} from "@/lib/grid/quote";
+import Text from "@/refresh-components/texts/Text";
 
 export interface AppInputBarHandle {
   reset: () => void;
@@ -144,6 +151,8 @@ const AppInputBar = React.memo(
       (state) => state.removeCurrentQueuedMessage
     );
     const { user, isAdmin } = useUser();
+    const { currentMessageFiles, setCurrentMessageFiles, currentProjectId } =
+      useProjectsContext();
     const isAutoSending = useRef(false);
     const inputWrapperRef = useRef<HTMLDivElement>(null);
     const {
@@ -208,6 +217,67 @@ const AppInputBar = React.memo(
     const appMode = state.phase === "idle" ? state.appMode : undefined;
     const isSearchMode =
       (isNewSession && appMode === "search") || isSearchActive;
+    const [gridQuoteState, setGridQuoteState] = useState<{
+      key: string;
+      quote: GridTextQuote;
+    } | null>(null);
+    const quoteContextTokens =
+      currentSessionFileTokenCount +
+      currentMessageFiles.reduce(
+        (total, file) => total + (file.token_count || 0),
+        0
+      );
+    const quoteModel = llmManager.currentLlm?.modelName;
+    const gridQuoteKey =
+      user &&
+      !user.is_anonymous_user &&
+      !isSearchMode &&
+      !isMultiModelActive &&
+      quoteModel &&
+      message.trim()
+        ? JSON.stringify([quoteModel, message, quoteContextTokens])
+        : null;
+
+    useEffect(() => {
+      if (!gridQuoteKey || !quoteModel) return;
+      const controller = new AbortController();
+      const timer = window.setTimeout(() => {
+        void fetch("/api/grid/account/quote", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: quoteModel,
+            prompt: message,
+            context_tokens: quoteContextTokens,
+            max_tokens: 32768,
+          }),
+          signal: controller.signal,
+        })
+          .then(async (response) => {
+            if (!response.ok) throw new Error("Grid quote unavailable");
+            return (await response.json()) as GridTextQuote;
+          })
+          .then((quote) => setGridQuoteState({ key: gridQuoteKey, quote }))
+          .catch((error: unknown) => {
+            if (
+              !(error instanceof DOMException && error.name === "AbortError")
+            ) {
+              setGridQuoteState((current) =>
+                current?.key === gridQuoteKey ? null : current
+              );
+            }
+          });
+      }, 400);
+      return () => {
+        window.clearTimeout(timer);
+        controller.abort();
+      };
+    }, [gridQuoteKey, message, quoteContextTokens, quoteModel]);
+
+    const gridQuote =
+      gridQuoteState?.key === gridQuoteKey ? gridQuoteState.quote : null;
+    const quoteInsufficient = gridQuoteNeedsFunding(gridQuote);
+    const quoteBlocksGeneration = gridQuoteBlocksGeneration(gridQuote);
 
     const handleRecordingChange = useCallback((nextIsRecording: boolean) => {
       setIsRecording((prevIsRecording) => {
@@ -228,12 +298,12 @@ const AppInputBar = React.memo(
     );
     const submitMessage = useCallback(
       (text: string) => {
-        if (!text.trim()) {
+        if (!text.trim() || quoteBlocksGeneration) {
           return;
         }
         handleSubmit(text);
       },
-      [handleSubmit]
+      [handleSubmit, quoteBlocksGeneration]
     );
 
     // Expose reset and focus methods to parent via ref
@@ -269,8 +339,6 @@ const AppInputBar = React.memo(
     }, [isNewSession, initialMessage]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const { forcedToolIds, setForcedToolIds } = useForcedTools();
-    const { currentMessageFiles, setCurrentMessageFiles, currentProjectId } =
-      useProjectsContext();
 
     const currentIndexingFiles = useMemo(() => {
       return currentMessageFiles.filter(
@@ -706,7 +774,8 @@ const AppInputBar = React.memo(
                 !isVoicePlaybackControllable &&
                 !message) ||
               hasUploadingFiles ||
-              isClassifying
+              isClassifying ||
+              quoteBlocksGeneration
             }
             id="onyx-chat-input-send-button"
             icon={
@@ -972,6 +1041,40 @@ const AppInputBar = React.memo(
                 </Section>
               )}
             </div>
+
+            {gridQuote && (
+              <div
+                className="px-3 pb-2 flex flex-wrap items-center gap-x-3 gap-y-1"
+                aria-live="polite"
+              >
+                {gridQuote.estimate.priced &&
+                gridQuote.estimate.cost_usd !== null ? (
+                  <Text text03 secondaryAction>
+                    Estimated {formatGridUSD(gridQuote.estimate.cost_usd)}
+                  </Text>
+                ) : (
+                  <Text text03 secondaryAction>
+                    Pricing unavailable
+                  </Text>
+                )}
+                <Text text03 secondaryAction>
+                  {formatGridUSD(gridQuote.total_spendable_usd)} spendable
+                </Text>
+                {!gridQuote.charging_enabled && (
+                  <Text text03 secondaryAction>
+                    Metering preview
+                  </Text>
+                )}
+                {quoteInsufficient && (
+                  <a
+                    className="text-action-link-05 text-sm font-medium hover:underline"
+                    href={GRID_FUNDING_URL}
+                  >
+                    Add credits
+                  </a>
+                )}
+              </div>
+            )}
 
             {chatControls}
 

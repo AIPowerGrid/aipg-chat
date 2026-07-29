@@ -7,8 +7,10 @@ import UserAvatar from "@/refresh-components/avatars/UserAvatar";
 import SimplePopover from "@/refresh-components/SimplePopover";
 import Text from "@/refresh-components/texts/Text";
 import { LineItemButton } from "@opal/components";
-import { SvgLogOut, SvgSliders, SvgUser } from "@opal/icons";
+import { SvgLogOut, SvgSliders, SvgUser, SvgWallet } from "@opal/icons";
 import { toast } from "@/hooks/useToast";
+import useGridAccount from "@/hooks/useGridAccount";
+import { formatGridUSD, GRID_FUNDING_URL } from "@/lib/grid/money";
 
 /**
  * AIPG fork: a round account/login circle for the top-right header. Logged-in
@@ -24,6 +26,7 @@ export default function HeaderUserButton() {
 
   const isAnon =
     !user || user.is_anonymous_user || checkUserIsNoAuthUser(user.id ?? "");
+  const { data: gridAccount } = useGridAccount(!isAnon);
 
   const nextParam = () => {
     const current = `${pathname}${
@@ -52,9 +55,7 @@ export default function HeaderUserButton() {
           toast.error("Failed to log out");
           return;
         }
-        router.push(
-          `/auth/login?disableAutoRedirect=true&next=${nextParam()}`
-        );
+        router.push(`/auth/login?disableAutoRedirect=true&next=${nextParam()}`);
       })
       .catch(() => toast.error("Failed to log out"));
   };
@@ -66,9 +67,16 @@ export default function HeaderUserButton() {
       trigger={
         <button
           aria-label="account"
-          className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden hover:opacity-90 transition-opacity"
+          className="flex items-center gap-2 hover:opacity-90 transition-opacity"
         >
-          <UserAvatar user={user} />
+          {gridAccount && (
+            <Text text03 secondaryAction>
+              {formatGridUSD(gridAccount.total_spendable_usd)}
+            </Text>
+          )}
+          <span className="flex items-center justify-center w-8 h-8 rounded-full overflow-hidden">
+            <UserAvatar user={user} />
+          </span>
         </button>
       }
     >
@@ -78,6 +86,54 @@ export default function HeaderUserButton() {
             {getUserEmail(user)}
           </Text>
         </div>
+        {gridAccount && (
+          <div className="px-2 pb-2 flex flex-col gap-1">
+            <div className="flex justify-between gap-3">
+              <Text text03 secondaryAction>
+                Spendable
+              </Text>
+              <Text text02 secondaryAction>
+                {formatGridUSD(gridAccount.total_spendable_usd)}
+              </Text>
+            </div>
+            {gridAccount.promotional_active && (
+              <div className="flex justify-between gap-3">
+                <Text text03 secondaryAction>
+                  Promotion
+                </Text>
+                <Text text02 secondaryAction>
+                  {formatGridUSD(gridAccount.promotional_balance_usd)}
+                </Text>
+              </div>
+            )}
+            {gridAccount.daily_active && (
+              <div className="flex justify-between gap-3">
+                <Text text03 secondaryAction>
+                  Daily
+                </Text>
+                <Text text02 secondaryAction>
+                  {formatGridUSD(gridAccount.daily_balance_usd)}
+                </Text>
+              </div>
+            )}
+            <div className="flex justify-between gap-3">
+              <Text text03 secondaryAction>
+                Purchased
+              </Text>
+              <Text text02 secondaryAction>
+                {formatGridUSD(gridAccount.paid_balance_usd)}
+              </Text>
+            </div>
+          </div>
+        )}
+        <LineItemButton
+          sizePreset="main-ui"
+          variant="section"
+          rounding="sm"
+          icon={SvgWallet}
+          title="Add credits"
+          href={GRID_FUNDING_URL}
+        />
         <LineItemButton
           sizePreset="main-ui"
           variant="section"

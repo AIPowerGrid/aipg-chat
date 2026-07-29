@@ -33,3 +33,45 @@ export interface GridModelStatus {
   // worker reports it.
   max_context_length: number | null;
 }
+
+export interface GridAccountSummary {
+  account_id: string;
+  paid_balance_usd: number;
+  promotional_balance_usd: number;
+  promotional_active: boolean;
+  daily_balance_usd: number;
+  daily_active: boolean;
+  total_spendable_usd: number;
+  total_preview_usd: number;
+  charging_enabled: boolean;
+  charging_mode: "off" | "allowlist" | "on";
+}
+
+export interface GridTextQuote {
+  account_id: string;
+  promotional: {
+    remaining_usd: number;
+    active: boolean;
+  };
+  free: {
+    remaining_usd: number;
+    active: boolean;
+  };
+  paid: {
+    balance_usd: number;
+  };
+  total_spendable_usd: number;
+  charging_enabled: boolean;
+  charging_mode: "off" | "allowlist" | "on";
+  estimate: {
+    model: string;
+    modality: "text";
+    priced: boolean;
+    reason: string | null;
+    cost_usd: number | null;
+    balance_sufficient: boolean;
+    prompt_tokens: number;
+    max_tokens: number;
+    shortfall_micro: number | null;
+  };
+}

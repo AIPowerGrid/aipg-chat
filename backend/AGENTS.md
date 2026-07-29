@@ -35,6 +35,11 @@ Craft/build execution control plane.
   delegated identity. Authenticated clients may read the normalized canonical
   account ID and credit summary through `GET /api/grid/account`; Chat obtains
   both from Core and never derives an account ID locally.
+- Chat proxies Core's canonical credit summary and bounded text quote through
+  authenticated `/api/grid/account` routes. Quote input uses Grid's
+  `o200k_base` counting proxy and the same 32,768-token default reservation
+  ceiling as Core; Core's atomic reserve remains authoritative when context
+  changes or requests race.
 - Use `OnyxError`, typed error codes, and the global error envelope described in
   the root guide; do not add ad-hoc `HTTPException` responses.
 - Craft/build routes require the feature gate and authenticated resource
