@@ -1418,7 +1418,9 @@ class TestGetBifrostAvailableModels:
 
         with (
             patch("onyx.server.manage.llm.api.httpx.get") as mock_get,
-            patch("onyx.server.manage.llm.api.logger.warning") as mock_warning,
+            patch(
+                "onyx.server.manage.llm.openai_compatible_fetch.logger.warning"
+            ) as mock_warning,
         ):
             mock_get.side_effect = httpx.ConnectError(
                 "Connection refused", request=MagicMock()

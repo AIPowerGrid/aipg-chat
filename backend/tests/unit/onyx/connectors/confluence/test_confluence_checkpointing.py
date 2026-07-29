@@ -339,8 +339,13 @@ def test_retrieve_all_slim_docs_perm_sync(
         MagicMock(json=lambda: {"results": []}),
     ]
 
-    # Call retrieve_all_slim_docs_perm_sync
-    batches = list(confluence_connector.retrieve_all_slim_docs_perm_sync(0, 100))
+    # This checkpointing test covers the CE path. Pin the edition explicitly so
+    # an earlier test that enables EE cannot leak process-global state into it.
+    with patch(
+        "onyx.connectors.confluence.access.global_version.is_ee_version",
+        return_value=False,
+    ):
+        batches = list(confluence_connector.retrieve_all_slim_docs_perm_sync(0, 100))
     assert get_mock.call_count == 4
 
     # With batch size of 2, we get:

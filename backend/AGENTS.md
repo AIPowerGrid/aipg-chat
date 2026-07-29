@@ -63,6 +63,12 @@ Craft/build execution control plane.
 - Integration: use managers/fixtures under `backend/tests/integration`.
 - Migrations: run `alembic upgrade head`; include tenant migration checks when
   changing enterprise schema.
+- Dependency changes: regenerate every export documented in
+  `backend/requirements/README.md`, install `default.txt` plus `ee.txt` into an
+  isolated Python 3.13 environment with `--no-deps --require-hashes`, and audit
+  that exact environment. The patched `msgpack` and `tornado` overrides exceed
+  mitmproxy 12.2.3's conservative metadata caps; any change to that set must
+  keep `backend/tests/unit/sandbox_proxy` green, including response streaming.
 
 ## Child DOX Index
 

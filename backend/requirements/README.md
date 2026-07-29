@@ -99,3 +99,34 @@ Upgrade specific packages:
 2. Pre-commit hooks will automatically regenerate lock and requirements files
 
 **Review changes carefully before committing!**
+
+### 6. Runtime Security Verification
+
+Audit the packages that the backend Docker image actually installs, rather than
+an all-groups development environment:
+
+```bash
+uv venv /tmp/onyx-backend-audit --python 3.13
+uv pip install --python /tmp/onyx-backend-audit/bin/python \
+  --no-deps --require-hashes \
+  -r backend/requirements/default.txt \
+  -r backend/requirements/ee.txt
+uv pip check --python /tmp/onyx-backend-audit/bin/python
+uvx pip-audit \
+  --path /tmp/onyx-backend-audit/lib/python3.13/site-packages \
+  --progress-spinner off
+pytest -q backend/tests/unit/sandbox_proxy
+```
+
+`mitmproxy==12.2.3` currently declares upper bounds below the patched
+`msgpack==1.2.1` and `tornado==6.5.7` releases. Those are intentional resolver
+overrides, so those two `uv pip check` lines are accepted only while the full
+sandbox-proxy unit and streaming suite passes.
+
+The backend runtime currently retains `nltk==3.9.4` through `unstructured`.
+`PYSEC-2026-597` has no fixed NLTK release. The temporary risk acceptance
+depends on application code never passing a user-controlled resource name to
+`nltk.data.find()` or `nltk.data.load()`; the image downloads only the fixed
+`stopwords` and `punkt_tab` resources. Re-audit and remove this exception as
+soon as an upstream fix is available, and treat any new direct NLTK resource
+loading as security-sensitive.
