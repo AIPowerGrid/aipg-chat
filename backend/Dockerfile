@@ -47,9 +47,6 @@ RUN uv pip install --system --no-cache-dir --no-deps --require-hashes \
     # https://github.com/tornadoweb/tornado/issues/3107
     rm -f /usr/local/lib/python3.13/site-packages/tornado/test/test.key && \
     rm -rf ~/.cache/uv /tmp/*.txt
-RUN uv pip install --system --no-cache-dir eth-account
-
-
 ####################################################################################################
 # Runtime stage
 #
