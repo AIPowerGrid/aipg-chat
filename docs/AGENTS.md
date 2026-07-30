@@ -39,4 +39,6 @@ notes for the AIPG Onyx fork, especially the Craft/build system.
 
 ## Child DOX Index
 
-- None - `craft/` and `dev/` inherit this guide.
+- [deployment/PRODUCTION_RELEASE.md](deployment/PRODUCTION_RELEASE.md) -
+  immutable Docker Compose release and rollback procedure for `aipg.chat`.
+- `craft/` and `dev/` inherit this guide.
