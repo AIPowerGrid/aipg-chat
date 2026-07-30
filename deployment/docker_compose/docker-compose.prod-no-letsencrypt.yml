@@ -6,6 +6,8 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile
+      args:
+        - ONYX_VERSION=${ONYX_VERSION:-0.0.0-dev}
     command: >
       /bin/sh -c "alembic upgrade head &&
       echo \"Starting Onyx Api Server\" &&
@@ -57,6 +59,8 @@ services:
     build:
       context: ../../backend
       dockerfile: Dockerfile
+      args:
+        - ONYX_VERSION=${ONYX_VERSION:-0.0.0-dev}
     command: /app/scripts/supervisord_entrypoint.sh
     depends_on:
       - relational_db
@@ -107,6 +111,7 @@ services:
       args:
         - NEXT_PUBLIC_DISABLE_LOGOUT=${NEXT_PUBLIC_DISABLE_LOGOUT:-}
         - NEXT_PUBLIC_THEME=${NEXT_PUBLIC_THEME:-}
+        - ONYX_VERSION=${ONYX_VERSION:-0.0.0-dev}
     depends_on:
       - api_server
     restart: unless-stopped
