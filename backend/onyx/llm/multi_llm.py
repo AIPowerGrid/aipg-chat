@@ -777,7 +777,10 @@ class LitellmLLM(LLM):
                     api_version=self._api_version or None,
                     custom_llm_provider=self._custom_llm_provider or None,
                     messages=messages,
-                    tools=tools,
+                    # An empty array is not equivalent to an omitted tool
+                    # definition for every OpenAI-compatible backend. Normalize
+                    # it here so LiteLLM does not serialize `tools: []`.
+                    tools=tools or None,
                     stream=stream,
                     timeout=timeout_override or self._timeout,
                     max_tokens=max_tokens,

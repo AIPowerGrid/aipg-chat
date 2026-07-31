@@ -1603,6 +1603,35 @@ def test_no_tool_choice_sent_when_no_tools(default_multi_llm: LitellmLLM) -> Non
         )
 
 
+def test_empty_tools_are_normalized_before_litellm(
+    default_multi_llm: LitellmLLM,
+) -> None:
+    """OpenAI-compatible backends may reject ``tools: []`` outright."""
+    messages: LanguageModelInput = [UserMessage(content="Hello!")]
+    mock_stream_chunks = [
+        litellm.ModelResponse(
+            id="chatcmpl-123",
+            choices=[
+                litellm.Choices(
+                    delta=_create_delta(role="assistant", content="Hello!"),
+                    finish_reason="stop",
+                    index=0,
+                )
+            ],
+            model="gpt-3.5-turbo",
+        )
+    ]
+
+    with patch("litellm.completion") as mock_completion:
+        mock_completion.return_value = mock_stream_chunks
+
+        default_multi_llm.invoke(messages, tools=[])
+
+        _, kwargs = mock_completion.call_args
+        assert kwargs["tools"] is None
+        assert "tool_choice" not in kwargs
+
+
 def test_bifrost_normalizes_api_base_in_model_kwargs() -> None:
     llm = LitellmLLM(
         api_key="test_key",
