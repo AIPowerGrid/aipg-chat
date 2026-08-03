@@ -151,7 +151,8 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
 
   const appNameRef = useRef<string>("AI Power Grid");
   useEffect(() => {
-    const appName = settings.enterpriseSettings?.application_name || "AI Power Grid";
+    const appName =
+      settings.enterpriseSettings?.application_name || "AI Power Grid";
     appNameRef.current = appName;
     document.title = currentChatSession?.name
       ? `${currentChatSession.name} — ${appName}`
@@ -556,27 +557,14 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
     }
   }, [documentSidebarVisible, updateCurrentDocumentSidebarVisible]);
 
-  if (!user) {
-    redirect("/auth/login");
+  if (!user || user.is_anonymous_user) {
+    const query = searchParams?.toString();
+    const next = `/app${query ? `?${query}` : ""}`;
+    redirect(`/auth/login?next=${encodeURIComponent(next)}`);
   }
 
   const onChat = useCallback(
     (message: string) => {
-      // AIPG: guests get 20 free prompts, then we nudge them to sign up.
-      if (user?.is_anonymous_user) {
-        const used =
-          parseInt(localStorage.getItem("aipg_guest_prompts") || "0", 10) || 0;
-        if (used >= 20) {
-          toast.info(
-            "You\u2019ve used your 20 free prompts. Sign up or connect your wallet to keep chatting!"
-          );
-          setTimeout(() => {
-            window.location.href = "/auth/login";
-          }, 1800);
-          return;
-        }
-        localStorage.setItem("aipg_guest_prompts", String(used + 1));
-      }
       if (multiModel.isMultiModelActive) {
         foldSidebarForMultiModel();
       }
@@ -606,7 +594,6 @@ export default function AppPage({ firstMessage }: ChatPageProps) {
       showOnboarding,
       onboardingDismissed,
       finishOnboarding,
-      user,
     ]
   );
   const { submit: submitQuery, state, setAppMode } = useQueryController();

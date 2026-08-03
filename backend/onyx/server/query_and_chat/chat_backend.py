@@ -556,7 +556,7 @@ def handle_send_chat_message(
     chat_message_req: SendMessageRequest,
     request: Request,
     user: User = Depends(
-        require_permission(Permission.WRITE_CHAT, allow_anonymous=True)
+        require_permission(Permission.WRITE_CHAT, allow_anonymous=False)
     ),
     _rate_limit_check: None = Depends(check_token_rate_limits),
     _api_key_usage_check: None = Depends(check_api_key_usage),

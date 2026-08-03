@@ -52,7 +52,10 @@ OpenAI-compatible model provider while retaining the broader Onyx application.
   tokens and caches them only in backend memory. Google ID tokens and
   Core-issued SIWE proofs are sent server-to-server to Core, which owns proof
   verification and account linking. Chat never accepts a browser-supplied app
-  subject. `AIPG_CHAT_INSTANCE_ID` separates non-user system calls.
+  subject. End-user inference requires a non-anonymous Chat session so every
+  request carries a delegated Core identity; free allowances and purchased
+  credits are owned and enforced by Core, never by a browser counter.
+  `AIPG_CHAT_INSTANCE_ID` separates non-user system calls.
 - `AUTH_TYPE=basic` intentionally supports Google, wallet, and email together.
   Google is enabled only when both `GOOGLE_OAUTH_CLIENT_ID` and
   `GOOGLE_OAUTH_CLIENT_SECRET` are present; Core's `aipg-chat` service policy

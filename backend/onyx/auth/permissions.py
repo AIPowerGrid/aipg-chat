@@ -110,6 +110,11 @@ def require_permission(
     base_user = current_chat_accessible_user if allow_anonymous else current_user
 
     async def dependency(request: Request, user: User = Depends(base_user)) -> User:
+        if getattr(user, "is_anonymous", False) is True and not allow_anonymous:
+            raise OnyxError(
+                OnyxErrorCode.UNAUTHENTICATED,
+                "Sign in to continue.",
+            )
         token_scopes: list[Permission] | None = getattr(
             request.state, "token_scopes", None
         )

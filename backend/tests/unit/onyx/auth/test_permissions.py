@@ -299,6 +299,15 @@ class TestAnonymousUserPermissions:
         assert await dep(request=_request(None), user=anon) is anon
 
     @pytest.mark.asyncio
+    async def test_protected_dependency_rejects_injected_anonymous_user(self) -> None:
+        anon = get_anonymous_user()
+        dep = require_permission(Permission.WRITE_CHAT, allow_anonymous=False)
+        with pytest.raises(OnyxError) as exc_info:
+            await dep(request=_request(None), user=anon)
+        assert exc_info.value.error_code == OnyxErrorCode.UNAUTHENTICATED
+        assert exc_info.value.detail == "Sign in to continue."
+
+    @pytest.mark.asyncio
     async def test_allow_anonymous_still_caps_scoped_token(self) -> None:
         user = MagicMock()
         user.effective_permissions = ["basic"]
