@@ -129,13 +129,13 @@ export default function ModelSelector({
     <Popover open={open} onOpenChange={handleOpenChange}>
       <div
         data-testid="model-selector"
-        className="flex items-center justify-end gap-1 p-1"
+        className="flex items-center justify-end gap-0.5 p-0.5"
       >
         {!atMax && (
           <Button
             prominence="tertiary"
             icon={SvgPlusCircle}
-            size="sm"
+            size="xs"
             tooltip="Add Model"
             onClick={(e: React.MouseEvent) => {
               anchorRef.current = e.currentTarget as HTMLElement;
@@ -185,7 +185,7 @@ export default function ModelSelector({
                       rightIcon={isMultiModel ? SvgX : undefined}
                       state="empty"
                       variant="select-input"
-                      size="lg"
+                      size="md"
                       onClick={(e: React.MouseEvent) => {
                         if (isMultiModel) {
                           const target = e.target as HTMLElement;
