@@ -50,13 +50,11 @@ jobs:
   database-tests:
     needs: changes
     if: needs.changes.outputs.db == 'true'
-    runs-on:
-      - runs-on
-      - runner=2cpu-linux-arm64
-      - "run-id=${{ github.run_id }}-database-tests"
+    runs-on: ${{ github.repository == 'AIPowerGrid/aipg-chat' && 'ubuntu-24.04' || fromJSON(format('["runs-on", "runner=2cpu-linux-arm64", "run-id={0}-database-tests"]', github.run_id)) }}
     timeout-minutes: 45
     steps:
       - uses: runs-on/action@d141ef83eb66d096ce8afc767e09115a65c63b60
+        if: github.repository != 'AIPowerGrid/aipg-chat'
 
       - name: Checkout code
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
@@ -80,6 +78,7 @@ jobs:
           ods openapi all
 
       - name: Log in to ECR pull-through cache
+        if: github.repository != 'AIPowerGrid/aipg-chat'
         uses: ./.github/actions/login-ecr-pullthrough-cache
         with:
           ecr-registry: ${{ vars.ECR_REGISTRY }}
@@ -87,7 +86,7 @@ jobs:
       - name: Start Docker containers
         working-directory: ./deployment/docker_compose
         run: |
-          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d \
+          docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --wait \
             relational_db
 
       - name: Run Database Tests

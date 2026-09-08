@@ -78,9 +78,11 @@ OpenAI-compatible model provider while retaining the broader Onyx application.
 
 ## Verification
 
-- AIPG's Python unit and type-check workflows use GitHub-hosted Ubuntu runners;
+- AIPG's Python unit, type-check, and database workflows use GitHub-hosted Ubuntu runners;
   the upstream RunsOn fleet and S3 cache are not available to this fork.
   The same test commands and hash-verified requirements remain mandatory.
+  Migration tests use the existing disposable Postgres Compose service directly
+  from Docker Hub rather than the upstream private ECR image cache.
   Other inherited integration workflows still require their own infrastructure;
   queued checks are not successful checks or production verification.
 - Backend gates are documented in `backend/AGENTS.md` and the testing sections
