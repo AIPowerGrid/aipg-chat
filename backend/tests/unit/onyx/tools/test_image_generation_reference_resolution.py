@@ -123,14 +123,13 @@ def test_image_requests_refresh_and_forward_delegated_headers() -> None:
     tool._extra_headers_factory = factory
     image = MagicMock()
     image.model_dump.return_value = {"b64_json": "dGVzdA=="}
-    tool.img_provider.generate_image.return_value = MagicMock(data=[image])
+    generate_image = tool.img_provider.generate_image
+    assert isinstance(generate_image, MagicMock)
+    generate_image.return_value = MagicMock(data=[image])
     tool._generate_image("first", ImageShape.SQUARE)
     tool._generate_image("second", ImageShape.SQUARE)
     assert factory.call_count == 2
-    assert [
-        call.kwargs["extra_headers"]
-        for call in tool.img_provider.generate_image.call_args_list
-    ] == [
+    assert [call.kwargs["extra_headers"] for call in generate_image.call_args_list] == [
         {"X-Grid-User-Token": "gridu_first"},
         {"X-Grid-User-Token": "gridu_refreshed"},
     ]
@@ -143,4 +142,6 @@ def test_image_identity_exchange_failure_never_calls_provider() -> None:
     )
     with pytest.raises(ToolExecutionException):
         tool._generate_image("test", ImageShape.SQUARE)
-    tool.img_provider.generate_image.assert_not_called()
+    generate_image = tool.img_provider.generate_image
+    assert isinstance(generate_image, MagicMock)
+    generate_image.assert_not_called()
