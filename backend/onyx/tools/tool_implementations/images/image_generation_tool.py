@@ -1,5 +1,6 @@
 import json
 import threading
+from collections.abc import Callable
 from typing import Any
 from typing import cast
 
@@ -65,11 +66,13 @@ class ImageGenerationTool(Tool[None]):
         model: str = IMAGE_MODEL_NAME,
         provider: str = IMAGE_MODEL_PROVIDER,
         num_imgs: int = 1,
+        extra_headers_factory: Callable[[], dict[str, str]] | None = None,
     ) -> None:
         super().__init__(emitter=emitter)
         self.model = model
         self.provider = provider
         self.num_imgs = num_imgs
+        self._extra_headers_factory = extra_headers_factory
 
         self.img_provider = get_image_generation_provider(
             provider, image_generation_credentials
@@ -188,6 +191,9 @@ class ImageGenerationTool(Tool[None]):
             size = "1024x1024"
         logger.debug("Generating image with model: %s, size: %s", self.model, size)
         try:
+            request_kwargs: dict[str, Any] = {}
+            if self._extra_headers_factory is not None:
+                request_kwargs["extra_headers"] = self._extra_headers_factory()
             response = self.img_provider.generate_image(
                 prompt=prompt,
                 model=self.model,
@@ -196,6 +202,7 @@ class ImageGenerationTool(Tool[None]):
                 reference_images=reference_images,
                 # response_format parameter is not supported for gpt-image-* models
                 response_format=None if "gpt-image-" in self.model else "b64_json",
+                **request_kwargs,
             )
 
             if not response.data or len(response.data) == 0:

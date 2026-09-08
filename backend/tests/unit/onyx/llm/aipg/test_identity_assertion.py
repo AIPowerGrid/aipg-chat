@@ -88,6 +88,78 @@ def test_anonymous_user_gets_no_grid_identity(monkeypatch) -> None:
     assert _headers({}, _provider(), user) == {}
 
 
+def test_image_headers_bind_each_user_and_refresh_per_request(monkeypatch) -> None:
+    calls = []
+
+    def fake_token(key, subject):
+        calls.append((key, subject))
+        return f"gridu_image_{len(calls)}"
+
+    monkeypatch.setattr(identity_assertion, "_service_token", fake_token)
+    user_a = SimpleNamespace(id="user-a", is_anonymous=False)
+    user_b = SimpleNamespace(id="user-b", is_anonymous=False)
+    provider = _provider()
+    first = identity_assertion.grid_image_headers_factory(
+        provider.api_base,
+        provider.api_key,
+        user_a,
+    )
+    second = identity_assertion.grid_image_headers_factory(
+        provider.api_base,
+        provider.api_key,
+        user_b,
+    )
+    assert first is not None and second is not None
+    assert calls == []
+    assert first() == {"X-Grid-User-Token": "gridu_image_1"}
+    assert second() == {"X-Grid-User-Token": "gridu_image_2"}
+    assert first() == {"X-Grid-User-Token": "gridu_image_3"}
+    assert calls == [
+        ("grid_test_bridge", "aipg-chat:user-a"),
+        ("grid_test_bridge", "aipg-chat:user-b"),
+        ("grid_test_bridge", "aipg-chat:user-a"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "user,key",
+    [
+        (None, "grid_test_bridge"),
+        (SimpleNamespace(is_anonymous=True), "grid_test_bridge"),
+        (SimpleNamespace(id="user", is_anonymous=False), None),
+        (SimpleNamespace(id="user", is_anonymous=False), "other-service"),
+    ],
+)
+def test_image_headers_reject_missing_identity_or_wrong_service(monkeypatch, user, key):
+    monkeypatch.setattr(
+        identity_assertion,
+        "_service_token",
+        lambda *_args: pytest.fail("invalid image identity must not exchange"),
+    )
+    factory = identity_assertion.grid_image_headers_factory(
+        _provider().api_base,
+        key,
+        user,
+    )
+    assert factory is not None
+    with pytest.raises(identity_assertion.GridIdentityError):
+        factory()
+
+
+@pytest.mark.parametrize(
+    "base", [None, "https://example.com/v1", "https://api.aipowergrid.io.evil.test/v1"]
+)
+def test_image_headers_never_send_grid_identity_to_other_endpoint(base):
+    assert (
+        identity_assertion.grid_image_headers_factory(
+            base,
+            "grid_test_bridge",
+            SimpleNamespace(id="user", is_anonymous=False),
+        )
+        is None
+    )
+
+
 def test_internal_call_uses_non_promotional_app_identity(monkeypatch) -> None:
     monkeypatch.setenv("AIPG_CHAT_INSTANCE_ID", "prod")
     monkeypatch.setattr(
@@ -207,8 +279,7 @@ async def test_google_exchange_invalidates_pre_link_token(monkeypatch) -> None:
 
     with identity_assertion._cache_lock:
         assert all(
-            key.partition(":")[2] != subject
-            for key in identity_assertion._token_cache
+            key.partition(":")[2] != subject for key in identity_assertion._token_cache
         )
         assert f"{'b' * 64}:other-subject" in identity_assertion._token_cache
 

@@ -215,9 +215,7 @@ async def exchange_wallet_identity(
         )
     )
     if not identity.get("wallet"):
-        raise GridIdentityError(
-            "Grid wallet exchange returned an incomplete identity"
-        )
+        raise GridIdentityError("Grid wallet exchange returned an incomplete identity")
     return identity
 
 
@@ -232,6 +230,30 @@ async def bind_local_identity(user_token: str, user_id: object) -> dict[str, Any
     )
     _invalidate_subject_tokens(subject)
     return result
+
+
+def grid_image_headers_factory(
+    api_base: str | None,
+    api_key: str | None,
+    user: User | None,
+) -> Callable[[], dict[str, str]] | None:
+    """Bind an image tool to its user, refreshing identity before each request."""
+    configured_base = os.environ.get("AIPG_GRID_API_BASE", "").rstrip("/")
+    if not configured_base or (api_base or "").rstrip("/") != configured_base:
+        return None
+    # Image configuration has no provider display name. Require the same
+    # service credential as account/login exchange to preserve its namespace.
+    configured_key = os.environ.get("AIPG_GRID_API_KEY", "").strip()
+    subject = _app_subject(user) if user is not None else None
+
+    def current_user_token() -> dict[str, str]:
+        if not subject or not api_key or api_key != configured_key:
+            raise GridIdentityError(
+                "Grid image generation requires an authenticated Chat identity"
+            )
+        return {_USER_TOKEN_HEADER: _service_token(api_key, subject)}
+
+    return current_user_token
 
 
 def grid_identity_headers(

@@ -35,6 +35,12 @@ Craft/build execution control plane.
   delegated identity. Authenticated clients may read the normalized canonical
   account ID and credit summary through `GET /api/grid/account`; Chat obtains
   both from Core and never derives an account ID locally.
+- Grid image tools bind the authenticated Chat subject at construction and
+  refresh the delegated token immediately before each image request, including
+  batch items. The image endpoint and key must match Chat's configured Grid
+  account-exchange service; other providers receive no Grid token. Missing user,
+  mismatched service key, or exchange failure rejects before image dispatch.
+  Tokens never live in the shared image-provider credential configuration.
 - Chat proxies Core's canonical credit summary and bounded text quote through
   authenticated `/api/grid/account` routes. Quote input uses Grid's
   `o200k_base` counting proxy and the same 32,768-token default reservation

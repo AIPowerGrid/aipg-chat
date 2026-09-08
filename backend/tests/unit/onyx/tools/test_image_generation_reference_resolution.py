@@ -14,12 +14,14 @@ from unittest.mock import patch
 import pytest
 
 from onyx.tools.models import ToolCallException
+from onyx.tools.models import ToolExecutionException
 from onyx.tools.tool_implementations.images.image_generation_tool import (
     ImageGenerationTool,
 )
 from onyx.tools.tool_implementations.images.image_generation_tool import (
     REFERENCE_IMAGE_FILE_IDS_FIELD,
 )
+from onyx.tools.tool_implementations.images.models import ImageShape
 
 
 def _make_tool(
@@ -108,3 +110,37 @@ class TestResolveReferenceImageFileIds:
             llm_kwargs={REFERENCE_IMAGE_FILE_IDS_FIELD: ["a", "b", "c", "d"]},
         )
         assert result == ["a", "b"]
+
+
+def test_image_requests_refresh_and_forward_delegated_headers() -> None:
+    tool = _make_tool()
+    factory = MagicMock(
+        side_effect=[
+            {"X-Grid-User-Token": "gridu_first"},
+            {"X-Grid-User-Token": "gridu_refreshed"},
+        ]
+    )
+    tool._extra_headers_factory = factory
+    image = MagicMock()
+    image.model_dump.return_value = {"b64_json": "dGVzdA=="}
+    tool.img_provider.generate_image.return_value = MagicMock(data=[image])
+    tool._generate_image("first", ImageShape.SQUARE)
+    tool._generate_image("second", ImageShape.SQUARE)
+    assert factory.call_count == 2
+    assert [
+        call.kwargs["extra_headers"]
+        for call in tool.img_provider.generate_image.call_args_list
+    ] == [
+        {"X-Grid-User-Token": "gridu_first"},
+        {"X-Grid-User-Token": "gridu_refreshed"},
+    ]
+
+
+def test_image_identity_exchange_failure_never_calls_provider() -> None:
+    tool = _make_tool()
+    tool._extra_headers_factory = MagicMock(
+        side_effect=RuntimeError("exchange unavailable")
+    )
+    with pytest.raises(ToolExecutionException):
+        tool._generate_image("test", ImageShape.SQUARE)
+    tool.img_provider.generate_image.assert_not_called()

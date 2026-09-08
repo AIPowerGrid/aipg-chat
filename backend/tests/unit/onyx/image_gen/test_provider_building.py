@@ -165,6 +165,38 @@ def test_openai_provider_uses_image_generation_without_reference_images() -> Non
     mock_edit.assert_not_called()
 
 
+def test_grid_image_provider_forwards_per_request_identity_without_retaining_it() -> (
+    None
+):
+    provider = OpenAIImageGenerationProvider(
+        api_key="grid_test_bridge",
+        api_base="https://api.aipowergrid.io/v1",
+    )
+    with patch("litellm.image_generation", return_value=object()) as generate:
+        provider.generate_image(
+            prompt="test",
+            model="Krea 2 Turbo",
+            size="1024x1024",
+            n=1,
+            extra_headers={"X-Grid-User-Token": "gridu_first"},
+        )
+        provider.generate_image(
+            prompt="test",
+            model="Krea 2 Turbo",
+            size="1024x1024",
+            n=1,
+            extra_headers={"X-Grid-User-Token": "gridu_second"},
+        )
+    assert [call.kwargs["extra_headers"] for call in generate.call_args_list] == [
+        {"X-Grid-User-Token": "gridu_first"},
+        {"X-Grid-User-Token": "gridu_second"},
+    ]
+    assert vars(provider) == {
+        "_api_key": "grid_test_bridge",
+        "_api_base": "https://api.aipowergrid.io/v1",
+    }
+
+
 def test_openai_provider_uses_image_edit_with_reference_images() -> None:
     provider = OpenAIImageGenerationProvider(
         api_key="test-key",
