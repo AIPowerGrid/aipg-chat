@@ -83,6 +83,11 @@ OpenAI-compatible model provider while retaining the broader Onyx application.
   The same test commands and hash-verified requirements remain mandatory.
   Migration tests use the existing disposable Postgres Compose service directly
   from Docker Hub rather than the upstream private ECR image cache.
+  `aipg-backend-image.yml` builds the real Linux/amd64 runtime Dockerfile without
+  private runners or registry credentials, verifies packaged billing-source
+  hashes, and imports the affected modules as the application user offline.
+  It is build evidence only: it does not publish a release artifact or replace
+  deployment, account-attribution, or live billing canaries.
   Other inherited integration workflows still require their own infrastructure;
   queued checks are not successful checks or production verification.
 - Backend gates are documented in `backend/AGENTS.md` and the testing sections
