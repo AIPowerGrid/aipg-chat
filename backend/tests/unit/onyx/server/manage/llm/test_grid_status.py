@@ -110,10 +110,12 @@ def test_grid_account_hides_upstream_error_details(
 def test_grid_text_quote_counts_prompt_and_context_and_uses_delegated_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import tiktoken
+
     calls: list[tuple[str, dict]] = []
     monkeypatch.setattr(grid_status, "grid_user_token", lambda _user: "gridu_user")
     monkeypatch.setattr(
-        grid_status._quote_tokenizer,
+        tiktoken.get_encoding("o200k_base"),
         "encode",
         lambda prompt: [1, 2, 3] if prompt == "hello grid" else [],
     )

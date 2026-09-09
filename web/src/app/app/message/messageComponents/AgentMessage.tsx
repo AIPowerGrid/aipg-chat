@@ -366,7 +366,8 @@ const AgentMessage = React.memo(function AgentMessage({
           isGenerating={isGenerating}
           displayedImageCount={generatedImageCount}
           showUnavailable={rawPackets.some(
-            (packet) => packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START
+            (packet) =>
+              packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START
           )}
         />
       )}

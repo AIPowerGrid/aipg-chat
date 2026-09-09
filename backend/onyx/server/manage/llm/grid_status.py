@@ -13,7 +13,6 @@ from typing import Any
 from uuid import UUID
 
 import httpx
-import tiktoken
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Query
@@ -43,7 +42,6 @@ from onyx.utils.logger import setup_logger
 logger = setup_logger()
 
 basic_router = APIRouter(prefix="/grid")
-_quote_tokenizer = tiktoken.get_encoding("o200k_base")
 
 
 def _image_receipt_payload(receipt: ImageRequestReceipt) -> dict[str, Any]:
@@ -353,7 +351,10 @@ def get_grid_text_quote(
     user: User = Depends(current_limited_user),
 ) -> dict[str, Any]:
     """Canonical non-mutating quote for the current text draft."""
-    prompt_tokens = len(_quote_tokenizer.encode(form.prompt)) + form.context_tokens
+    import tiktoken
+
+    tokenizer = tiktoken.get_encoding("o200k_base")
+    prompt_tokens = len(tokenizer.encode(form.prompt)) + form.context_tokens
     return _grid_user_post(
         "/v1/account/credits/quote",
         user,
