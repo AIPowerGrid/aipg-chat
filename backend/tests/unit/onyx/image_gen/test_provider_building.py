@@ -172,7 +172,15 @@ def test_grid_image_provider_forwards_per_request_identity_without_retaining_it(
         api_key="grid_test_bridge",
         api_base="https://api.aipowergrid.io/v1",
     )
-    with patch("litellm.image_generation", return_value=object()) as generate:
+    with (
+        patch("openai.OpenAI") as sdk,
+        patch("litellm.image_generation") as generate,
+    ):
+        client = sdk.return_value.__enter__.return_value
+        client.images.generate.return_value.model_dump.return_value = {
+            "created": 1,
+            "data": [{"b64_json": "dGVzdA=="}],
+        }
         provider.generate_image(
             prompt="test",
             model="Krea 2 Turbo",
@@ -187,14 +195,42 @@ def test_grid_image_provider_forwards_per_request_identity_without_retaining_it(
             n=1,
             extra_headers={"X-Grid-User-Token": "gridu_second"},
         )
-    assert [call.kwargs["extra_headers"] for call in generate.call_args_list] == [
+    generate.assert_not_called()
+    assert [call.kwargs["default_headers"] for call in sdk.call_args_list] == [
         {"X-Grid-User-Token": "gridu_first"},
         {"X-Grid-User-Token": "gridu_second"},
     ]
+    assert all(call.kwargs["max_retries"] == 0 for call in sdk.call_args_list)
+    assert sdk.return_value.__exit__.call_count == 2
+    assert all(
+        "extra_headers" not in call.kwargs
+        for call in client.images.generate.call_args_list
+    )
     assert vars(provider) == {
         "_api_key": "grid_test_bridge",
         "_api_base": "https://api.aipowergrid.io/v1",
     }
+
+
+def test_unverified_grid_image_edits_fail_before_transport() -> None:
+    provider = OpenAIImageGenerationProvider(
+        api_key="grid_test_bridge", api_base="https://api.aipowergrid.io/v1"
+    )
+    with (
+        patch("litellm.image_edit") as edit,
+        patch("openai.OpenAI") as sdk,
+        pytest.raises(ValueError, match="Grid image edits are not enabled"),
+    ):
+        provider.generate_image(
+            prompt="test",
+            model="gpt-image-1",
+            size="1024x1024",
+            n=1,
+            reference_images=[ReferenceImage(data=b"test", mime_type="image/png")],
+            extra_headers={"X-Grid-User-Token": "gridu_test"},
+        )
+    edit.assert_not_called()
+    sdk.assert_not_called()
 
 
 def test_openai_provider_uses_image_edit_with_reference_images() -> None:

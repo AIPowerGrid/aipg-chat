@@ -80,3 +80,9 @@ jobs:
     - name: Run Tests
       shell: script -q -e -c "bash --noprofile --norc -eo pipefail {0}"
       run: py.test -o junit_family=xunit2 -v -n auto backend/tests/unit
+
+    - name: Grid image HTTP transport regression
+      if: github.repository == 'AIPowerGrid/aipg-chat'
+      env:
+        LITELLM_LOCAL_MODEL_COST_MAP: "true"
+      run: pytest -v backend/tests/external_dependency_unit/llm/test_grid_image_transport.py

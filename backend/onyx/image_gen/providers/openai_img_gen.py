@@ -77,8 +77,11 @@ class OpenAIImageGenerationProvider(ImageGenerationProvider):
         # Explicitly prefix with `openai/` so LiteLLM routes correctly even
         # for models not yet in its built-in registry (e.g. new gpt-image-* releases).
         litellm_model = f"openai/{normalized_model}"
+        delegated_grid = "X-Grid-User-Token" in kwargs.get("extra_headers", {})
 
         if reference_images:
+            if delegated_grid:
+                raise ValueError("Grid image edits are not enabled in Chat.")
             if not self._model_supports_image_edits(model):
                 raise ValueError(
                     f"Model '{model}' does not support image edits with reference images."
@@ -125,6 +128,34 @@ class OpenAIImageGenerationProvider(ImageGenerationProvider):
             provider="openai",
             input_messages=[{"role": "user", "content": prompt}],
         ):
+            if delegated_grid:
+                import httpx
+                from litellm.types.utils import ImageResponse
+                from openai import OpenAI
+
+                # LiteLLM's image adapter retries uncertain POSTs and can copy
+                # extra_headers into the body. Keep delegated Grid calls single-shot.
+                headers = kwargs.pop("extra_headers")
+                request: dict[str, Any] = {
+                    "prompt": prompt,
+                    "model": normalized_model,
+                    "size": size,
+                    "n": n,
+                    **kwargs,
+                }
+                if quality is not None:
+                    request["quality"] = quality
+                with OpenAI(
+                    api_key=self._api_key,
+                    base_url=self._api_base,
+                    default_headers=headers,
+                    max_retries=0,
+                    timeout=600.0,
+                    http_client=httpx.Client(follow_redirects=False),
+                ) as client:
+                    response = client.images.generate(**request)
+                return ImageResponse(**response.model_dump())
+
             return image_generation(
                 prompt=prompt,
                 model=litellm_model,

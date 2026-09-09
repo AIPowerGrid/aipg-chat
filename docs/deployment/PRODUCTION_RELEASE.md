@@ -34,6 +34,24 @@ value in both images.
 
 ## Deploy
 
+### Grid image billing gate
+
+Delegated image generation uses a request-local SDK client without retries or
+redirects. The HTTP stand-in regression proves one POST for 429/5xx/lost-response
+outcomes and header-only user identity; it does not prove a paid Core lifecycle.
+Grid image edits are disabled in Chat pending their own verification.
+
+Before enabling paid images in Chat, verify that the configured image endpoint
+and service key match the canonical Grid identity exchange, then run a funded
+tool call with the authenticated user's account and reconcile its reservation,
+settlement and reward eligibility. An uncertain response must not be presented
+as a free failure or automatically regenerated. Durable Chat tool-request/result
+recovery remains unproven: the single-shot transport does not make a later
+manual retry idempotent. Keep that path disabled for the paid rollout until its
+recovery behavior is verified.
+
+### Application activation
+
 ```bash
 docker compose -f docker-compose.prod-no-letsencrypt.yml \
   up -d --no-deps api_server background web_server

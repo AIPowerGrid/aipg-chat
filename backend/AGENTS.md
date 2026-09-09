@@ -41,6 +41,14 @@ Craft/build execution control plane.
   account-exchange service; other providers receive no Grid token. Missing user,
   mismatched service key, or exchange failure rejects before image dispatch.
   Tokens never live in the shared image-provider credential configuration.
+  Delegated Grid image generation uses a request-local OpenAI SDK client with
+  automatic retries and redirects disabled: an uncertain POST must not create
+  another paid job or forward identity to a redirect target. The token belongs
+  only in HTTP headers, never the generation JSON body.
+  The local HTTP stand-in test exercises the actual provider and SDK, including
+  lost responses and 429/5xx errors; it is not a funded Core billing canary.
+  Grid image edits remain disabled in Chat until their transport, recipe and
+  billing lifecycle are verified. Other providers' image editing is unchanged.
 - Chat proxies Core's canonical credit summary and bounded text quote through
   authenticated `/api/grid/account` routes. Quote input uses Grid's
   `o200k_base` counting proxy and the same 32,768-token default reservation
