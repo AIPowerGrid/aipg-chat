@@ -88,6 +88,9 @@ OpenAI-compatible model provider while retaining the broader Onyx application.
   hashes, and imports the affected modules as the application user offline.
   It is build evidence only: it does not publish a release artifact or replace
   deployment, account-attribution, or live billing canaries.
+  An offline packaged-application smoke also verifies the real basic-auth
+  dependency rejects anonymous account/image-recovery reads and that recovery
+  refuses POST. It skips startup lifespan and supplies no production credentials.
   The hosted Python job also runs the Grid image HTTP stand-in regression:
   real SDK calls, no paid jobs or private services. It checks single-shot
   submission, delegated-header isolation and redirect rejection.

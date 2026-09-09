@@ -114,6 +114,12 @@ Craft/build execution control plane.
   including killing a submitting subprocess after the POST was received. They
   are not evidence of production Core billing or a real worker generation.
 - Integration: use managers/fixtures under `backend/tests/integration`.
+- `scripts/verify_grid_billing_auth.py` runs against the actual packaged
+  application with basic auth and unmodified dependencies. Image recovery and
+  account reads must reject unauthenticated callers; recovery has no POST
+  route. Hosted image CI runs this with networking disabled, no credentials,
+  and the ASGI lifespan skipped. It does not prove application startup,
+  signed-in ownership, or funded billing.
 - Migrations: run `alembic upgrade head`; include tenant migration checks when
   changing enterprise schema.
 - Dependency changes: regenerate every export documented in
