@@ -61,8 +61,15 @@ a failed asset download must recover the paid result, not buy another image.
 An account still in unbilled preview mode is rejected before generation.
 Real Postgres plus a local HTTP stand-in cover a killed submitting process,
 lost replies, repeated calls, partial batches and foreign-owner denial.
-Still required: connect browser recovery to these receipts, restore the saved
-images after reload, and run real funded Core/worker and account-linking canaries.
+The candidate browser now discovers receipts for visible authenticated messages
+and error responses. Unknown results offer a read-only check, completed results
+can be reopened/downloaded through the owner-checked `/content` subroute, and
+normally displayed images keep their originals collapsed until requested.
+Receipt caches are separated by Chat user; shared messages do not activate
+private receipt discovery. No recovery control calls the generation API.
+Still required: real funded Core/worker and account-linking canaries, including
+the complete deployed Chat stream, crash/reload and partial-batch paths. Local
+component tests and mocked browser responses do not prove those production gates.
 A new explicit assistant generation is a new paid intent; it is not a way to
 recover an earlier request.
 If deployed later, migrate before serving the new code. Keep the additive

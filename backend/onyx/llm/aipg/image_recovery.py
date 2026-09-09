@@ -235,7 +235,7 @@ class GridImageRecovery:
         return recovered
 
 
-def image_base64(result: dict[str, Any]) -> str:
+def image_bytes(result: dict[str, Any]) -> bytes:
     """Download only the validated output, without credentials, with a hard bound."""
     output = CoreImageResult.model_validate(result).media[0]
     with ssrf_safe_get(
@@ -253,4 +253,8 @@ def image_base64(result: dict[str, Any]) -> str:
     if hashlib.sha256(content).hexdigest() != output.sha256:
         raise GridImageRecoveryError("The saved image failed its integrity check")
     get_image_type_from_bytes(bytes(content))
-    return base64.b64encode(content).decode("ascii")
+    return bytes(content)
+
+
+def image_base64(result: dict[str, Any]) -> str:
+    return base64.b64encode(image_bytes(result)).decode("ascii")

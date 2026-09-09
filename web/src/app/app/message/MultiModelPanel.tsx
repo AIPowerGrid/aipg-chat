@@ -1,5 +1,6 @@
 "use client";
 
+import GridImageRecovery from "@/app/app/message/messageComponents/GridImageRecovery";
 import { useCallback } from "react";
 import { Button } from "@opal/components";
 import { Text } from "@opal/components";
@@ -158,6 +159,10 @@ export default function MultiModelPanel({
             details={errorDetails || undefined}
             stackTrace={errorStackTrace}
           />
+          <GridImageRecovery
+            messageId={agentMessageProps.messageId}
+            showUnavailable
+          />
         </div>
       ) : (
         <div className={cn(isNonPreferredInSelection && "pointer-events-none")}>
@@ -165,6 +170,7 @@ export default function MultiModelPanel({
             {...agentMessageProps}
             hideFooter={isNonPreferredInSelection}
             disableTTS
+            isGenerating={isGenerating}
           />
         </div>
       )}

@@ -1,5 +1,6 @@
 "use client";
 
+import GridImageRecovery from "@/app/app/message/messageComponents/GridImageRecovery";
 import React, { useCallback, useMemo, useRef } from "react";
 import { Message } from "@/app/app/interfaces";
 import { OnyxDocument, MinimalOnyxDocument } from "@/lib/search/interfaces";
@@ -278,6 +279,10 @@ const ChatUI = React.memo(
                       details={message.errorDetails || undefined}
                       stackTrace={message.stackTrace || undefined}
                     />
+                    <GridImageRecovery
+                      messageId={message.messageId}
+                      showUnavailable
+                    />
                   </div>
                 );
               }
@@ -314,6 +319,7 @@ const ChatUI = React.memo(
                     nodeId={message.nodeId}
                     messageId={message.messageId}
                     currentFeedback={message.currentFeedback}
+                    isGenerating={message.is_generating}
                     llmManager={llmManager}
                     otherMessagesCanSwitchTo={
                       parentMessage?.childrenNodeIds ?? emptyChildrenIds
@@ -324,6 +330,26 @@ const ChatUI = React.memo(
                     processingDurationSeconds={
                       message.processingDurationSeconds
                     }
+                  />
+                </div>
+              );
+            }
+            if (message.type === "error") {
+              const previousMessage = i !== 0 ? messages[i - 1] : null;
+              if (
+                previousMessage?.type === "user" &&
+                getMultiModelResponses(previousMessage)
+              ) {
+                return null;
+              }
+              return (
+                <div
+                  key={messageReactComponentKey}
+                  className={`w-full ${MSG_MAX_W} self-center`}
+                >
+                  <GridImageRecovery
+                    messageId={message.messageId}
+                    showUnavailable
                   />
                 </div>
               );

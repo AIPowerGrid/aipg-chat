@@ -391,3 +391,67 @@ def test_recovery_routes_are_owner_scoped_and_private(
     recovered = grid_status.recover_grid_image_request(receipt.id, User(id=OWNER))
     assert recovered.headers["Cache-Control"] == "no-store"
     assert json.loads(bytes(recovered.body))["state"] == "completed"
+
+
+def test_content_route_checks_auth_and_ownership_before_fetching_asset(
+    core: Core,
+    journal: sessionmaker[Session],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from unittest.mock import Mock
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from onyx.auth.users import current_limited_user
+    from onyx.db.models import User
+    from onyx.error_handling.error_codes import OnyxErrorCode
+    from onyx.error_handling.exceptions import OnyxError
+    from onyx.error_handling.exceptions import register_onyx_exception_handlers
+    from onyx.server.manage.llm import grid_status
+
+    receipt = generate(core, journal)
+
+    def for_user(user):
+        instance = service(core, journal)
+        instance.user_id = user.id
+        return instance
+
+    monkeypatch.setattr(grid_status, "recovery_for_user", for_user)
+    fetch_asset = Mock(return_value=b"\x89PNG\r\n\x1a\n")
+    monkeypatch.setattr(grid_status, "image_bytes", fetch_asset)
+    app = FastAPI()
+    app.include_router(grid_status.basic_router)
+    register_onyx_exception_handlers(app)
+    path = f"/grid/images/{receipt.id}/content"
+
+    def unauthenticated():
+        raise OnyxError(OnyxErrorCode.UNAUTHENTICATED)
+
+    app.dependency_overrides[current_limited_user] = unauthenticated
+    with TestClient(app) as client:
+        assert client.get(path).status_code == 401
+        fetch_asset.assert_not_called()
+        app.dependency_overrides[current_limited_user] = lambda: User(id=OTHER)
+        assert client.get(path).status_code == 404
+        fetch_asset.assert_not_called()
+        app.dependency_overrides[current_limited_user] = lambda: User(id=OWNER)
+        response = client.get(path)
+        assert response.status_code == 200
+        assert response.content == fetch_asset.return_value
+        assert response.headers["content-type"] == "image/png"
+        assert response.headers["cache-control"] == "no-store"
+        assert response.headers["x-content-type-options"] == "nosniff"
+        assert response.headers["content-disposition"].startswith("inline;")
+        assert (
+            client.get(path + "?download=true")
+            .headers["content-disposition"]
+            .startswith("attachment;")
+        )
+        fetch_asset.side_effect = ValueError("secret upstream details")
+        unavailable = client.get(path)
+        assert unavailable.status_code == 503
+        assert unavailable.headers["cache-control"] == "no-store"
+        assert "secret upstream" not in unavailable.text
+        assert client.post(path).status_code == 405
+    assert len(posts(core)) == 1

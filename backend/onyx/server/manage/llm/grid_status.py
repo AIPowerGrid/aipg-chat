@@ -18,6 +18,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import Query
 from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
@@ -34,7 +35,9 @@ from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.llm.aipg.identity_assertion import grid_user_token
 from onyx.llm.aipg.identity_assertion import GridIdentityError
+from onyx.llm.aipg.image_recovery import image_bytes
 from onyx.llm.aipg.image_recovery import recovery_for_user
+from onyx.utils.b64 import get_image_type_from_bytes
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
@@ -74,11 +77,7 @@ def get_grid_image_requests(
         ) from exc
 
 
-@basic_router.get("/images/{request_id}")
-def recover_grid_image_request(
-    request_id: UUID,
-    user: User = Depends(current_limited_user),
-) -> JSONResponse:
+def _owned_grid_image_request(request_id: UUID, user: User) -> ImageRequestReceipt:
     try:
         receipt = recovery_for_user(user).recover(request_id)
     except Exception as exc:
@@ -93,8 +92,52 @@ def recover_grid_image_request(
             "Image request not found.",
             headers={"Cache-Control": "no-store"},
         )
+    return receipt
+
+
+@basic_router.get("/images/{request_id}")
+def recover_grid_image_request(
+    request_id: UUID,
+    user: User = Depends(current_limited_user),
+) -> JSONResponse:
+    receipt = _owned_grid_image_request(request_id, user)
     return JSONResponse(
         _image_receipt_payload(receipt), headers={"Cache-Control": "no-store"}
+    )
+
+
+@basic_router.get("/images/{request_id}/content")
+def get_grid_image_content(
+    request_id: UUID,
+    download: bool = False,
+    user: User = Depends(current_limited_user),
+) -> Response:
+    receipt = _owned_grid_image_request(request_id, user)
+    if receipt.state != "completed" or receipt.result is None:
+        raise OnyxError(
+            OnyxErrorCode.NOT_FOUND,
+            "The original image is not available yet. No new image was submitted.",
+            headers={"Cache-Control": "no-store"},
+        )
+    try:
+        content = image_bytes(receipt.result)
+        media_type = get_image_type_from_bytes(content)
+    except Exception as exc:
+        raise OnyxError(
+            OnyxErrorCode.SERVICE_UNAVAILABLE,
+            "The original image is temporarily unavailable. No new image was submitted.",
+            headers={"Cache-Control": "no-store"},
+        ) from exc
+    extension = media_type.split("/")[1]
+    disposition = "attachment" if download else "inline"
+    return Response(
+        content,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'{disposition}; filename="grid-{request_id}.{extension}"',
+        },
     )
 
 

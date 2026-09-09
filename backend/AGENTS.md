@@ -71,8 +71,12 @@ Craft/build execution control plane.
   SHA-256 verification. A missing/uncertain response never grants another POST.
   `GET /api/grid/images?message_id=...` lists only the signed-in owner's journal;
   `GET /api/grid/images/{request_id}` recovers it without submitting work.
-  Both return private no-store metadata. Browser recovery integration and
-  funded production/account-linking canaries remain outstanding.
+  Both return private no-store metadata. The `/content` subroute serves only
+  owner-checked, integrity-verified raster bytes, with `nosniff` and no-store;
+  `download=true` selects attachment disposition. It never generates an image.
+  The candidate browser UI discovers receipts for visible signed-in messages,
+  including error responses, and recovers original images after reload. Funded
+  production/account-linking and full Chat deployment canaries remain outstanding.
   Journal rows follow Chat user/message deletion; Core's billing records do
   not. Production code rollback must retain a populated journal schema.
 - Chat proxies Core's canonical credit summary and bounded text quote through
