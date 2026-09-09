@@ -75,6 +75,32 @@ recover an earlier request.
 If deployed later, migrate before serving the new code. Keep the additive
 journal on rollback; its downgrade refuses nonempty data.
 
+#### Restored-database rehearsal (2026-09-09 UTC)
+
+Candidate `93fb5a7aa757cac60edcde55a7cfcdfb650caac4` was rehearsed against a
+private restore of the live PostgreSQL 15 database, not the live database:
+
+- Production started and remained at application `4ff336d32d` and Alembic
+  `01c63968ff8f`. The API container ID and start time were unchanged.
+- The custom-format backup was 4,082,000 bytes; SHA-256:
+  `d87393842c43bf6b618c1fcb2554f68823c2645d5b478ec21aa2e05127f5bd0c`.
+- The restore contained 136 existing public application tables. The real
+  Alembic `upgrade head` reached `a1f092c7d8e3`; a second upgrade was a no-op.
+  Row counts and content fingerprints of all 136 pre-existing tables matched
+  before and after both upgrades. The new journal had zero rows.
+- The one-shot migration used the current production backend image's
+  dependencies with the exact candidate backend source mounted read-only;
+  temporary directories and logging were writable tmpfs. This is migration
+  compatibility evidence, not a deployment of the candidate application image.
+- The scratch database and temporary database-credential file were removed.
+  The backup, configuration snapshot and successful `rehearsal-2/proof.json`
+  remain in the private `chat-93fb5a7aa7` release-check directory. Never commit
+  the backup or credential-bearing snapshots/logs.
+
+This rehearsal does not replace a fresh pre-cutover backup, current-head CI,
+the full application build, or funded end-to-end billing canaries. The later
+lazy-import/formatting cleanup does not change this migration.
+
 ### Application activation
 
 ```bash
