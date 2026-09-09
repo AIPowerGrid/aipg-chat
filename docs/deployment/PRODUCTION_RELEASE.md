@@ -101,6 +101,48 @@ This rehearsal does not replace a fresh pre-cutover backup, current-head CI,
 the full application build, or funded end-to-end billing canaries. The later
 lazy-import/formatting cleanup does not change this migration.
 
+#### Packaged runtime rehearsal (2026-09-09 UTC)
+
+Both Linux/amd64 application Dockerfiles built successfully from pushed commit
+`65c656aa51d40c60e739db78ed1de93e2d6a9167`, using its clean Git archive rather
+than the operator worktree. The archive was 20,077,374 bytes; SHA-256:
+`d46057088f283d72dc1735a63e27a2fe69524973f20c21fda31175749679e7ea`.
+The separate builder was capped at two CPUs and 8 GiB RAM and received no
+production environment or credentials. These are operator-built rehearsal
+images, not published CI release artifacts or a production deployment.
+
+| Candidate image | Docker image ID |
+| --- | --- |
+| `aipg-chat-backend:billing-65c656aa51` | `sha256:468668c7cdc75be0fce102919f6027183702b44becd32ff593676c3426f67641` |
+| `aipg-chat-web:billing-65c656aa51` | `sha256:9304bb275de81134a92fee9b693a6a66f7722863abf73dc168bc19fe0a55bd71` |
+
+- Both images carry the exact source revision label and `ONYX_VERSION=65c656aa51`.
+  Ten packaged backend source files, including the image journal migration,
+  matched the archive's SHA-256 hashes.
+- The backend passed authentication-package imports and full application
+  route/auth checks as UID 1001 with networking disabled. Native basic auth
+  returned `403` with the unauthenticated error for account, image-list,
+  recovery and content reads. POST to recovery returned `405`.
+  No authentication dependency was mocked; ASGI lifespan was intentionally
+  skipped. This does not establish database-backed startup or signed-in access.
+- The frontend passed the complete Next production build, including TypeScript
+  and route generation. A temporary network-isolated server returned `200` for
+  the login page, all 32 referenced JavaScript assets and the PNG logo. Its API
+  backend was deliberately unavailable; rendering the page does not prove
+  Google/wallet login, account attribution or generation. The server was removed.
+- Production API, background and web containers remained on `4ff336d32d`, with
+  their original 2026-08-29 start times. No live application migration,
+  generation, charging activation or payout action was performed.
+
+The reusable [packaged-auth check](../../backend/scripts/verify_grid_billing_auth.py)
+now runs in hosted backend-image CI. It supplements, not replaces, database,
+ownership, funded recovery and full deployed application canaries. The private
+`chat-65c656aa51` release-check directory retains build logs and
+`build-proof.json`; it contains the exact tested image IDs and source hashes.
+The subsequent auth-smoke/CI/docs changes do not alter the packaged application
+source or migration. Revalidate current-head checks and release provenance
+before any cutover; this rehearsal does not waive queued inherited checks.
+
 ### Application activation
 
 ```bash
