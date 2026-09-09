@@ -92,3 +92,14 @@ jobs:
       - name: Run Database Tests
         working-directory: ./backend
         run: pytest tests/integration/tests/migrations/
+
+      - name: Grid image journal concurrency proofs
+        if: github.repository == 'AIPowerGrid/aipg-chat'
+        working-directory: ./backend
+        env:
+          PYTHONPATH: .
+          AIPG_TEST_POSTGRES_URL: postgresql+psycopg2://postgres:password@localhost:5432/postgres
+          DISABLE_TELEMETRY: "true"
+          LICENSE_ENFORCEMENT_ENABLED: "false"
+          LITELLM_LOCAL_MODEL_COST_MAP: "true"
+        run: pytest -v tests/external_dependency_unit/db/test_grid_image_journal.py

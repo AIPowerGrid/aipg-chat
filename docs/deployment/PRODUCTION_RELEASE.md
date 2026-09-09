@@ -50,6 +50,17 @@ recovery remains unproven: the single-shot transport does not make a later
 manual retry idempotent. Keep that path disabled for the paid rollout until its
 recovery behavior is verified.
 
+The pending journal migration `a1f092c7d8e3` adds owner/message-scoped request
+receipts and a one-submission claim guard. Its database helpers have standalone
+Postgres tests, but are not yet wired into the image tool or a recovery API.
+Remaining integration: supply the server-reserved assistant message and image
+slot; commit a claim before POST; send its UUID as Core's progress/client
+reference; persist only verified Core terminals; expose owner-checked recovery
+without regeneration and restore saved images into Chat. Validate this whole
+path, including a killed process and account linking, before paid activation.
+If deployed later, migrate before serving the new code. Keep the additive
+journal on rollback; its downgrade refuses nonempty data.
+
 ### Application activation
 
 ```bash

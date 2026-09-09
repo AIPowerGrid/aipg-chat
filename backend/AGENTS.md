@@ -49,6 +49,14 @@ Craft/build execution control plane.
   lost responses and 429/5xx errors; it is not a funded Core billing canary.
   Grid image edits remain disabled in Chat until their transport, recipe and
   billing lifecycle are verified. Other providers' image editing is unchanged.
+- `onyx/db/grid_image_requests.py` and Alembic `a1f092c7d8e3` are the pending
+  Chat image-journal foundation, not yet integrated with the tool or deployed.
+  One committed owner/assistant-message/slot claim permits one submission;
+  repeated claims only return the existing receipt. A recovery 404 never
+  permits redispatch. Use dedicated short-lived sessions; no network I/O in a
+  journal transaction. Core remains the authoritative billing ledger.
+  Journal rows follow Chat user/message deletion; Core's billing records do
+  not. Production code rollback must retain a populated journal schema.
 - Chat proxies Core's canonical credit summary and bounded text quote through
   authenticated `/api/grid/account` routes. Quote input uses Grid's
   `o200k_base` counting proxy and the same 32,768-token default reservation
@@ -74,6 +82,11 @@ Craft/build execution control plane.
 - Unit: `pytest -xv backend/tests/unit`
 - External dependency: follow root `.vscode/.env` command and run the focused
   subtree.
+- Image journal: set `AIPG_TEST_POSTGRES_URL` to a disposable PostgreSQL instance
+  and run `backend/tests/external_dependency_unit/db/test_grid_image_journal.py`.
+  Tests apply the actual migration in unique temporary schemas, exercise real
+  concurrent claims and terminal writes, then drop those schemas. Hosted
+  database CI invokes this explicitly; skipped tests are not concurrency proof.
 - Integration: use managers/fixtures under `backend/tests/integration`.
 - Migrations: run `alembic upgrade head`; include tenant migration checks when
   changing enterprise schema.
