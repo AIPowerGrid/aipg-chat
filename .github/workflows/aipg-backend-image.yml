@@ -52,6 +52,12 @@ jobs:
           test "$(docker image inspect aipg-chat-backend:ci --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$SOURCE_SHA"
           paths=(
             onyx/llm/aipg/identity_assertion.py
+            onyx/llm/aipg/image_recovery.py
+            onyx/db/grid_image_requests.py
+            onyx/db/models.py
+            onyx/server/manage/llm/grid_status.py
+            onyx/image_gen/providers/openai_img_gen.py
+            onyx/chat/process_message.py
             onyx/tools/tool_constructor.py
             onyx/tools/tool_implementations/images/image_generation_tool.py
           )

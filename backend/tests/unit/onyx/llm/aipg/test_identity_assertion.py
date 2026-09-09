@@ -155,11 +155,20 @@ def test_image_headers_reject_missing_identity_or_wrong_service(monkeypatch, use
     "base", [None, "https://example.com/v1", "https://api.aipowergrid.io.evil.test/v1"]
 )
 def test_image_headers_never_send_grid_identity_to_other_endpoint(base):
+    factory = identity_assertion.grid_image_headers_factory(
+        base, "grid_test_bridge", User(id="user")
+    )
+    assert factory is not None
+    with pytest.raises(
+        identity_assertion.GridIdentityError, match="endpoint must match"
+    ):
+        factory()
+
+
+def test_non_grid_image_provider_keeps_its_own_transport():
     assert (
         identity_assertion.grid_image_headers_factory(
-            base,
-            "grid_test_bridge",
-            User(id="user"),
+            "https://example.com/v1", "other-provider-key", User(id="user")
         )
         is None
     )

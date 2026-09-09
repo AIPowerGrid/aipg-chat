@@ -1194,6 +1194,7 @@ def _run_models(
                 emitter=model_emitter,
                 user=user,
                 llm=model_llm,
+                image_message_id=setup.reserved_messages[model_idx].id,
                 search_tool_config=SearchToolConfig(
                     user_selected_filters=setup.new_msg_req.internal_search_filters,
                     project_id_filter=setup.search_params.project_id_filter,

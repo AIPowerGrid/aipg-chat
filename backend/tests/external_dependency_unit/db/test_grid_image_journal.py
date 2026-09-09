@@ -119,6 +119,45 @@ def test_batch_items_are_distinct_but_changed_payload_cannot_reuse_slot(
     assert claim(journal, "image:0").id == a.id
 
 
+def test_unconfirmed_group_blocks_new_llm_tool_call_but_not_batch_items(
+    journal: sessionmaker[Session],
+) -> None:
+    first = claim(journal, "group1:0")
+    second = claim(journal, "group1:1")
+    assert first.id != second.id
+    with pytest.raises(ImageRequestConflict, match="new user request"):
+        claim(journal, "group2:0")
+    assert not claim(journal, "group1:0").may_submit
+
+
+def test_parallel_tools_in_one_llm_turn_remain_allowed(
+    journal: sessionmaker[Session],
+) -> None:
+    assert claim(journal, "0:None:0:0:0").may_submit
+    assert claim(journal, "0:None:0:1:0").may_submit
+    with pytest.raises(ImageRequestConflict):
+        claim(journal, "1:None:0:0:0")
+
+
+@pytest.mark.parametrize("result", [None, {"media": []}])
+def test_terminal_group_cannot_be_rebought_by_llm_retry(
+    journal: sessionmaker[Session], result: dict | None
+) -> None:
+    receipt = claim(journal, "0:None:0:0:0")
+    with journal() as session:
+        finish_image_request(
+            session,
+            user_id=OWNER,
+            request_id=receipt.id,
+            grid_job_id=uuid4(),
+            result=result,
+        )
+    with pytest.raises(ImageRequestConflict, match="new user request"):
+        claim(journal, "1:None:0:0:0")
+    recovered = claim(journal, "0:None:0:0:0")
+    assert recovered.id == receipt.id and not recovered.may_submit
+
+
 def test_owner_is_checked_for_claim_read_and_finish(
     journal: sessionmaker[Session],
 ) -> None:

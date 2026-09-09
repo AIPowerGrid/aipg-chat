@@ -40,24 +40,31 @@ Delegated image generation uses a request-local SDK client without retries or
 redirects. The HTTP stand-in regression proves one POST for 429/5xx/lost-response
 outcomes and header-only user identity; it does not prove a paid Core lifecycle.
 Grid image edits are disabled in Chat pending their own verification.
+A Grid key at a noncanonical image endpoint fails closed instead of bypassing
+delegation through the generic provider transport.
 
 Before enabling paid images in Chat, verify that the configured image endpoint
 and service key match the canonical Grid identity exchange, then run a funded
 tool call with the authenticated user's account and reconcile its reservation,
 settlement and reward eligibility. An uncertain response must not be presented
-as a free failure or automatically regenerated. Durable Chat tool-request/result
-recovery remains unproven: the single-shot transport does not make a later
-manual retry idempotent. Keep that path disabled for the paid rollout until its
-recovery behavior is verified.
+as a free failure or automatically regenerated. Keep this path out of the paid
+launch until its complete browser-to-Core recovery behavior is verified.
 
 The pending journal migration `a1f092c7d8e3` adds owner/message-scoped request
-receipts and a one-submission claim guard. Its database helpers have standalone
-Postgres tests, but are not yet wired into the image tool or a recovery API.
-Remaining integration: supply the server-reserved assistant message and image
-slot; commit a claim before POST; send its UUID as Core's progress/client
-reference; persist only verified Core terminals; expose owner-checked recovery
-without regeneration and restore saved images into Chat. Validate this whole
-path, including a killed process and account linking, before paid activation.
+receipts and a one-submission claim guard. The candidate now wires the tool to
+the server-reserved assistant message and image slot, commits before POST and
+sends the UUID as Core's progress/client reference. It persists validated Core
+terminals and exposes owner-checked list/recovery endpoints under `/api/grid/images`.
+One assistant response may open one image tool-turn group, including parallel
+tool tabs and batch items. Later LLM-turn groups reject even after settlement:
+a failed asset download must recover the paid result, not buy another image.
+An account still in unbilled preview mode is rejected before generation.
+Real Postgres plus a local HTTP stand-in cover a killed submitting process,
+lost replies, repeated calls, partial batches and foreign-owner denial.
+Still required: connect browser recovery to these receipts, restore the saved
+images after reload, and run real funded Core/worker and account-linking canaries.
+A new explicit assistant generation is a new paid intent; it is not a way to
+recover an earlier request.
 If deployed later, migrate before serving the new code. Keep the additive
 journal on rollback; its downgrade refuses nonempty data.
 

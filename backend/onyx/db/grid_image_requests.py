@@ -64,9 +64,41 @@ def claim_image_request(
             ChatMessage.message_type == MessageType.ASSISTANT,
             ChatSession.user_id == user_id,
         )
+        .with_for_update(of=ChatMessage)
     )
     if owned is None:
         raise ImageRequestConflict("Image request message is unavailable")
+    existing = db_session.scalar(
+        select(GridImageRequest).where(
+            GridImageRequest.message_id == message_id,
+            GridImageRequest.slot == slot,
+        )
+    )
+    if existing is not None:
+        if existing.user_id != user_id or existing.request_sha256 != request_sha256:
+            db_session.rollback()
+            raise ImageRequestConflict(
+                "Image request does not match its original claim"
+            )
+        receipt = _receipt(existing)
+        db_session.commit()
+        return receipt
+    # The last two components are the parallel tool tab and batch item.
+    # Serialize on the assistant row so an LLM retry cannot buy another group,
+    # including after settlement succeeds but downloading the paid asset fails.
+    group = slot.rsplit(":", 2)[0]
+    previous = db_session.execute(
+        select(GridImageRequest.id, GridImageRequest.slot).where(
+            GridImageRequest.message_id == message_id,
+        )
+    ).all()
+    for previous_id, previous_slot in previous:
+        if previous_slot.rsplit(":", 2)[0] != group:
+            db_session.rollback()
+            raise ImageRequestConflict(
+                f"This response already requested images. Recover request {previous_id}; "
+                "a new generation requires a new user request."
+            )
     inserted = db_session.scalar(
         insert(GridImageRequest)
         .values(
@@ -102,6 +134,21 @@ def read_image_request(
         )
     )
     return _receipt(row) if row else None
+
+
+def list_image_requests(
+    db_session: Session, *, user_id: UUID, message_id: int
+) -> list[ImageRequestReceipt]:
+    rows = db_session.scalars(
+        select(GridImageRequest)
+        .where(
+            GridImageRequest.user_id == user_id,
+            GridImageRequest.message_id == message_id,
+        )
+        .order_by(GridImageRequest.created_at, GridImageRequest.id)
+        .limit(100)
+    ).all()
+    return [_receipt(row) for row in rows]
 
 
 def finish_image_request(

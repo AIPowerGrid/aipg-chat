@@ -20,6 +20,8 @@ from onyx.image_gen.factory import get_image_generation_provider
 from onyx.image_gen.factory import validate_credentials
 from onyx.image_gen.interfaces import ImageGenerationProviderCredentials
 from onyx.image_gen.interfaces import ReferenceImage
+from onyx.llm.aipg.image_recovery import GridImageRecovery
+from onyx.llm.aipg.image_recovery import image_base64
 from onyx.server.query_and_chat.placement import Placement
 from onyx.server.query_and_chat.streaming_models import GeneratedImage
 from onyx.server.query_and_chat.streaming_models import ImageGenerationFinal
@@ -67,12 +69,16 @@ class ImageGenerationTool(Tool[None]):
         provider: str = IMAGE_MODEL_PROVIDER,
         num_imgs: int = 1,
         extra_headers_factory: Callable[[], dict[str, str]] | None = None,
+        grid_recovery: GridImageRecovery | None = None,
+        grid_message_id: int | None = None,
     ) -> None:
         super().__init__(emitter=emitter)
         self.model = model
         self.provider = provider
         self.num_imgs = num_imgs
         self._extra_headers_factory = extra_headers_factory
+        self._grid_recovery = grid_recovery
+        self._grid_message_id = grid_message_id
 
         self.img_provider = get_image_generation_provider(
             provider, image_generation_credentials
@@ -178,6 +184,7 @@ class ImageGenerationTool(Tool[None]):
         prompt: str,
         shape: ImageShape,
         reference_images: list[ReferenceImage] | None = None,
+        request_slot: str | None = None,
     ) -> tuple[ImageGenerationResponse, Any]:
         if shape == ImageShape.LANDSCAPE:
             # AIPG grid recipes cap any dimension at 1536 and REJECT (not clamp)
@@ -191,9 +198,32 @@ class ImageGenerationTool(Tool[None]):
             size = "1024x1024"
         logger.debug("Generating image with model: %s, size: %s", self.model, size)
         try:
-            request_kwargs: dict[str, Any] = {}
             if self._extra_headers_factory is not None:
-                request_kwargs["extra_headers"] = self._extra_headers_factory()
+                if (
+                    not self._grid_recovery
+                    or self._grid_message_id is None
+                    or request_slot is None
+                ):
+                    raise RuntimeError("Grid image recovery context is unavailable")
+                if reference_images:
+                    raise ValueError("Grid image edits are not enabled in Chat")
+                receipt = self._grid_recovery.generate(
+                    provider=self.img_provider,
+                    message_id=self._grid_message_id,
+                    slot=request_slot,
+                    prompt=prompt,
+                    model=self.model,
+                    size=size,
+                )
+                if receipt.result is None:
+                    raise RuntimeError("Grid image result is not available")
+                return (
+                    ImageGenerationResponse(
+                        revised_prompt=prompt, image_data=image_base64(receipt.result)
+                    ),
+                    receipt.result,
+                )
+            request_kwargs: dict[str, Any] = {}
             response = self.img_provider.generate_image(
                 prompt=prompt,
                 model=self.model,
@@ -413,9 +443,10 @@ class ImageGenerationTool(Tool[None]):
                                     prompt,
                                     shape,
                                     reference_images or None,
+                                    f"{placement.turn_index}:{placement.sub_turn_index}:{placement.model_index}:{placement.tab_index}:{index}",
                                 ),
                             )
-                            for _ in range(self.num_imgs)
+                            for index in range(self.num_imgs)
                         ]
                     ),
                 )

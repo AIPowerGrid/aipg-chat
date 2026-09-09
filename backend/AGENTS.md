@@ -40,6 +40,8 @@ Craft/build execution control plane.
   batch items. The image endpoint and key must match Chat's configured Grid
   account-exchange service; other providers receive no Grid token. Missing user,
   mismatched service key, or exchange failure rejects before image dispatch.
+  A Grid key paired with a noncanonical image endpoint also rejects; it must
+  not fall through to the generic provider transport without delegation.
   Tokens never live in the shared image-provider credential configuration.
   Delegated Grid image generation uses a request-local OpenAI SDK client with
   automatic retries and redirects disabled: an uncertain POST must not create
@@ -49,12 +51,28 @@ Craft/build execution control plane.
   lost responses and 429/5xx errors; it is not a funded Core billing canary.
   Grid image edits remain disabled in Chat until their transport, recipe and
   billing lifecycle are verified. Other providers' image editing is unchanged.
-- `onyx/db/grid_image_requests.py` and Alembic `a1f092c7d8e3` are the pending
-  Chat image-journal foundation, not yet integrated with the tool or deployed.
+- `onyx/db/grid_image_requests.py` and Alembic `a1f092c7d8e3` back the candidate
+  Chat image recovery flow (not deployed). `image_recovery.py` binds the owner,
+  service identity and tenant; `process_message.py` supplies the reserved
+  assistant-message ID, never a user-message ID or an LLM-supplied identifier.
+  Tool placement and image index distinguish independent items and models.
   One committed owner/assistant-message/slot claim permits one submission;
   repeated claims only return the existing receipt. A recovery 404 never
-  permits redispatch. Use dedicated short-lived sessions; no network I/O in a
+  permits redispatch. Claims lock the assistant row: an earlier LLM-turn group
+  blocks new groups even after settlement, so asset-download failures cannot
+  cause an LLM retry to buy more images. Parallel tool tabs and batch items in
+  the same turn remain independent. New generations require a new user request.
+  Use dedicated short-lived sessions; no network I/O in a
   journal transaction. Core remains the authoritative billing ledger.
+  A new submission requires Core's account charging flag to be true; unbilled
+  preview accounts reject before dispatch. Successful tool output requires a
+  validated, settled Core recovery result, including its cost. Assets are
+  fetched through the SSRF-safe client with redirects off, a 20 MiB bound and
+  SHA-256 verification. A missing/uncertain response never grants another POST.
+  `GET /api/grid/images?message_id=...` lists only the signed-in owner's journal;
+  `GET /api/grid/images/{request_id}` recovers it without submitting work.
+  Both return private no-store metadata. Browser recovery integration and
+  funded production/account-linking canaries remain outstanding.
   Journal rows follow Chat user/message deletion; Core's billing records do
   not. Production code rollback must retain a populated journal schema.
 - Chat proxies Core's canonical credit summary and bounded text quote through
@@ -83,10 +101,14 @@ Craft/build execution control plane.
 - External dependency: follow root `.vscode/.env` command and run the focused
   subtree.
 - Image journal: set `AIPG_TEST_POSTGRES_URL` to a disposable PostgreSQL instance
-  and run `backend/tests/external_dependency_unit/db/test_grid_image_journal.py`.
+  and run the `test_grid_image_journal.py` and `test_grid_image_recovery.py`
+  modules under `backend/tests/external_dependency_unit/db/`.
   Tests apply the actual migration in unique temporary schemas, exercise real
   concurrent claims and terminal writes, then drop those schemas. Hosted
   database CI invokes this explicitly; skipped tests are not concurrency proof.
+  Recovery tests use real Postgres and SDK HTTP against a local Core stand-in,
+  including killing a submitting subprocess after the POST was received. They
+  are not evidence of production Core billing or a real worker generation.
 - Integration: use managers/fixtures under `backend/tests/integration`.
 - Migrations: run `alembic upgrade head`; include tenant migration checks when
   changing enterprise schema.

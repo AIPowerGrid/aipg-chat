@@ -112,30 +112,30 @@ class TestResolveReferenceImageFileIds:
         assert result == ["a", "b"]
 
 
-def test_image_requests_refresh_and_forward_delegated_headers() -> None:
+def test_image_requests_use_owned_durable_slots() -> None:
     tool = _make_tool()
-    factory = MagicMock(
-        side_effect=[
-            {"X-Grid-User-Token": "gridu_first"},
-            {"X-Grid-User-Token": "gridu_refreshed"},
-        ]
-    )
-    tool._extra_headers_factory = factory
-    image = MagicMock()
-    image.model_dump.return_value = {"b64_json": "dGVzdA=="}
+    tool._extra_headers_factory = MagicMock()
+    recovery = MagicMock()
+    recovery.generate.return_value.result = {"media": []}
+    tool._grid_recovery = recovery
+    tool._grid_message_id = 42
+    with patch(
+        "onyx.tools.tool_implementations.images.image_generation_tool.image_base64",
+        return_value="dGVzdA==",
+    ):
+        tool._generate_image("first", ImageShape.SQUARE, request_slot="image:0")
+        tool._generate_image("second", ImageShape.SQUARE, request_slot="image:1")
+    assert [c.kwargs["slot"] for c in recovery.generate.call_args_list] == [
+        "image:0",
+        "image:1",
+    ]
+    assert all(c.kwargs["message_id"] == 42 for c in recovery.generate.call_args_list)
     generate_image = tool.img_provider.generate_image
     assert isinstance(generate_image, MagicMock)
-    generate_image.return_value = MagicMock(data=[image])
-    tool._generate_image("first", ImageShape.SQUARE)
-    tool._generate_image("second", ImageShape.SQUARE)
-    assert factory.call_count == 2
-    assert [call.kwargs["extra_headers"] for call in generate_image.call_args_list] == [
-        {"X-Grid-User-Token": "gridu_first"},
-        {"X-Grid-User-Token": "gridu_refreshed"},
-    ]
+    generate_image.assert_not_called()
 
 
-def test_image_identity_exchange_failure_never_calls_provider() -> None:
+def test_image_without_durable_context_never_calls_provider() -> None:
     tool = _make_tool()
     tool._extra_headers_factory = MagicMock(
         side_effect=RuntimeError("exchange unavailable")

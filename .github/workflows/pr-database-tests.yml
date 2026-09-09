@@ -102,4 +102,4 @@ jobs:
           DISABLE_TELEMETRY: "true"
           LICENSE_ENFORCEMENT_ENABLED: "false"
           LITELLM_LOCAL_MODEL_COST_MAP: "true"
-        run: pytest -v tests/external_dependency_unit/db/test_grid_image_journal.py
+        run: pytest -v tests/external_dependency_unit/db/test_grid_image_journal.py tests/external_dependency_unit/db/test_grid_image_recovery.py

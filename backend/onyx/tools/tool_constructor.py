@@ -24,6 +24,7 @@ from onyx.db.tools import get_builtin_tool
 from onyx.document_index.factory import get_default_document_index
 from onyx.image_gen.interfaces import ImageGenerationProviderCredentials
 from onyx.llm.aipg.identity_assertion import grid_image_headers_factory
+from onyx.llm.aipg.image_recovery import recovery_for_user
 from onyx.llm.interfaces import LLM
 from onyx.llm.interfaces import LLMConfig
 from onyx.onyxbot.slack.models import SlackContext
@@ -123,6 +124,7 @@ def construct_tools(
     file_reader_tool_config: FileReaderToolConfig | None = None,
     allowed_tool_ids: list[int] | None = None,
     search_usage_forcing_setting: SearchToolUsage = SearchToolUsage.AUTO,
+    image_message_id: int | None = None,
 ) -> dict[int, list[Tool]]:
     """Constructs tools based on persona configuration and available APIs.
 
@@ -144,6 +146,7 @@ def construct_tools(
             file_reader_tool_config=file_reader_tool_config,
             allowed_tool_ids=allowed_tool_ids,
             search_usage_forcing_setting=search_usage_forcing_setting,
+            image_message_id=image_message_id,
         )
 
 
@@ -158,6 +161,7 @@ def _construct_tools_impl(
     file_reader_tool_config: FileReaderToolConfig | None = None,
     allowed_tool_ids: list[int] | None = None,
     search_usage_forcing_setting: SearchToolUsage = SearchToolUsage.AUTO,
+    image_message_id: int | None = None,
 ) -> dict[int, list[Tool]]:
     tool_dict: dict[int, list[Tool]] = {}
 
@@ -244,6 +248,11 @@ def _construct_tools_impl(
                 img_generation_llm_config = _get_image_generation_config(
                     llm, db_session
                 )
+                image_headers = grid_image_headers_factory(
+                    img_generation_llm_config.api_base,
+                    img_generation_llm_config.api_key,
+                    user,
+                )
 
                 tool_dict[db_tool_model.id] = [
                     ImageGenerationTool(
@@ -261,11 +270,15 @@ def _construct_tools_impl(
                         model=img_generation_llm_config.model_name,
                         tool_id=db_tool_model.id,
                         emitter=emitter,
-                        extra_headers_factory=grid_image_headers_factory(
-                            img_generation_llm_config.api_base,
-                            img_generation_llm_config.api_key,
+                        extra_headers_factory=image_headers,
+                        grid_recovery=recovery_for_user(
                             user,
-                        ),
+                            api_base=img_generation_llm_config.api_base or "",
+                            api_key=img_generation_llm_config.api_key or "",
+                        )
+                        if image_headers is not None
+                        else None,
+                        grid_message_id=image_message_id,
                     )
                 ]
 
