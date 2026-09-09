@@ -75,3 +75,9 @@ export interface GridTextQuote {
     shortfall_micro: number | null;
   };
 }
+
+export interface GridImageReceipt {
+  request_id: string;
+  state: "unconfirmed" | "completed" | "closed";
+  result: { model: string } | null;
+}

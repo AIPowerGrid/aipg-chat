@@ -3281,6 +3281,41 @@ class ImageGenerationConfig(Base):
     )
 
 
+class GridImageRequest(Base):
+    """Chat recovery journal, not the authoritative Grid billing ledger."""
+
+    __tablename__ = "grid_image_request"
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("user.id", ondelete="CASCADE"), nullable=False
+    )
+    message_id: Mapped[int] = mapped_column(
+        ForeignKey("chat_message.id", ondelete="CASCADE"), nullable=False
+    )
+    slot: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_sha256: Mapped[str] = mapped_column(String(64), nullable=False)
+    state: Mapped[str] = mapped_column(String(16), nullable=False)
+    grid_job_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    result: Mapped[dict[str, Any] | None] = mapped_column(PGJSONB(none_as_null=True))
+    created_at: Mapped[datetime.datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    __table_args__ = (
+        UniqueConstraint("message_id", "slot", name="uq_grid_image_request_slot"),
+        CheckConstraint(
+            "state IN ('attempted', 'completed', 'closed')",
+            name="ck_grid_image_request_state",
+        ),
+        CheckConstraint(
+            "(state = 'completed' AND result IS NOT NULL AND grid_job_id IS NOT NULL) "
+            "OR (state <> 'completed' AND result IS NULL)",
+            name="ck_grid_image_request_result",
+        ),
+        Index("ix_grid_image_request_user_created", "user_id", "created_at"),
+    )
+
+
 class VoiceProvider(Base):
     """Configuration for voice services (STT and TTS)."""
 

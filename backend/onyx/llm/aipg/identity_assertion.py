@@ -215,9 +215,7 @@ async def exchange_wallet_identity(
         )
     )
     if not identity.get("wallet"):
-        raise GridIdentityError(
-            "Grid wallet exchange returned an incomplete identity"
-        )
+        raise GridIdentityError("Grid wallet exchange returned an incomplete identity")
     return identity
 
 
@@ -232,6 +230,42 @@ async def bind_local_identity(user_token: str, user_id: object) -> dict[str, Any
     )
     _invalidate_subject_tokens(subject)
     return result
+
+
+def grid_image_headers_factory(
+    api_base: str | None,
+    api_key: str | None,
+    user: User | None,
+) -> Callable[[], dict[str, str]] | None:
+    """Bind an image tool to its user, refreshing identity before each request."""
+    configured_base = os.environ.get("AIPG_GRID_API_BASE", "").rstrip("/")
+    # Image configuration has no provider display name. Require the same
+    # service credential as account/login exchange to preserve its namespace.
+    configured_key = os.environ.get("AIPG_GRID_API_KEY", "").strip()
+    base_matches = (
+        bool(configured_base) and (api_base or "").rstrip("/") == configured_base
+    )
+    grid_key = bool(api_key) and (
+        api_key == configured_key or api_key.startswith("grid_")
+    )
+    if not base_matches and not grid_key:
+        return None
+    subject = _app_subject(user) if user is not None else None
+
+    def current_user_token() -> dict[str, str]:
+        if not base_matches:
+            # Do not treat an old alias/misconfigured Grid endpoint as a generic
+            # provider: that would bypass delegation and leak the service key.
+            raise GridIdentityError(
+                "Grid image endpoint must match the configured Grid API"
+            )
+        if not subject or not api_key or api_key != configured_key:
+            raise GridIdentityError(
+                "Grid image generation requires an authenticated Chat identity"
+            )
+        return {_USER_TOKEN_HEADER: _service_token(api_key, subject)}
+
+    return current_user_token
 
 
 def grid_identity_headers(

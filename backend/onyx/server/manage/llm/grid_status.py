@@ -10,11 +10,14 @@ onto upstream Onyx.
 """
 
 from typing import Any
+from uuid import UUID
 
 import httpx
-import tiktoken
 from fastapi import APIRouter
 from fastapi import Depends
+from fastapi import Query
+from fastapi.responses import JSONResponse
+from fastapi.responses import Response
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
@@ -23,17 +26,117 @@ from onyx.auth.users import current_chat_accessible_user
 from onyx.auth.users import current_limited_user
 from onyx.configs.app_configs import AIPG_GRID_API_BASE
 from onyx.configs.app_configs import AIPG_GRID_API_KEY
+from onyx.db.engine.sql_engine import get_session_with_current_tenant
+from onyx.db.grid_image_requests import ImageRequestReceipt
+from onyx.db.grid_image_requests import list_image_requests
 from onyx.db.models import User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.llm.aipg.identity_assertion import grid_user_token
 from onyx.llm.aipg.identity_assertion import GridIdentityError
+from onyx.llm.aipg.image_recovery import image_bytes
+from onyx.llm.aipg.image_recovery import recovery_for_user
+from onyx.utils.b64 import get_image_type_from_bytes
 from onyx.utils.logger import setup_logger
 
 logger = setup_logger()
 
 basic_router = APIRouter(prefix="/grid")
-_quote_tokenizer = tiktoken.get_encoding("o200k_base")
+
+
+def _image_receipt_payload(receipt: ImageRequestReceipt) -> dict[str, Any]:
+    return {
+        "request_id": str(receipt.id),
+        "state": "unconfirmed" if receipt.state == "attempted" else receipt.state,
+        "job_id": str(receipt.grid_job_id) if receipt.grid_job_id else None,
+        "result": receipt.result,
+    }
+
+
+@basic_router.get("/images")
+def get_grid_image_requests(
+    message_id: int = Query(gt=0),
+    user: User = Depends(current_limited_user),
+) -> JSONResponse:
+    try:
+        with get_session_with_current_tenant() as session:
+            receipts = list_image_requests(
+                session, user_id=user.id, message_id=message_id
+            )
+        return JSONResponse(
+            {"requests": [_image_receipt_payload(r) for r in receipts]},
+            headers={"Cache-Control": "no-store"},
+        )
+    except Exception as exc:
+        raise OnyxError(
+            OnyxErrorCode.SERVICE_UNAVAILABLE,
+            "Image recovery is temporarily unavailable.",
+            headers={"Cache-Control": "no-store"},
+        ) from exc
+
+
+def _owned_grid_image_request(request_id: UUID, user: User) -> ImageRequestReceipt:
+    try:
+        receipt = recovery_for_user(user).recover(request_id)
+    except Exception as exc:
+        raise OnyxError(
+            OnyxErrorCode.SERVICE_UNAVAILABLE,
+            "Image recovery is temporarily unavailable. No new image was submitted.",
+            headers={"Cache-Control": "no-store"},
+        ) from exc
+    if receipt is None:
+        raise OnyxError(
+            OnyxErrorCode.NOT_FOUND,
+            "Image request not found.",
+            headers={"Cache-Control": "no-store"},
+        )
+    return receipt
+
+
+@basic_router.get("/images/{request_id}")
+def recover_grid_image_request(
+    request_id: UUID,
+    user: User = Depends(current_limited_user),
+) -> JSONResponse:
+    receipt = _owned_grid_image_request(request_id, user)
+    return JSONResponse(
+        _image_receipt_payload(receipt), headers={"Cache-Control": "no-store"}
+    )
+
+
+@basic_router.get("/images/{request_id}/content")
+def get_grid_image_content(
+    request_id: UUID,
+    download: bool = False,
+    user: User = Depends(current_limited_user),
+) -> Response:
+    receipt = _owned_grid_image_request(request_id, user)
+    if receipt.state != "completed" or receipt.result is None:
+        raise OnyxError(
+            OnyxErrorCode.NOT_FOUND,
+            "The original image is not available yet. No new image was submitted.",
+            headers={"Cache-Control": "no-store"},
+        )
+    try:
+        content = image_bytes(receipt.result)
+        media_type = get_image_type_from_bytes(content)
+    except Exception as exc:
+        raise OnyxError(
+            OnyxErrorCode.SERVICE_UNAVAILABLE,
+            "The original image is temporarily unavailable. No new image was submitted.",
+            headers={"Cache-Control": "no-store"},
+        ) from exc
+    extension = media_type.split("/")[1]
+    disposition = "attachment" if download else "inline"
+    return Response(
+        content,
+        media_type=media_type,
+        headers={
+            "Cache-Control": "no-store",
+            "X-Content-Type-Options": "nosniff",
+            "Content-Disposition": f'{disposition}; filename="grid-{request_id}.{extension}"',
+        },
+    )
 
 
 class GridTextQuoteRequest(BaseModel):
@@ -248,7 +351,10 @@ def get_grid_text_quote(
     user: User = Depends(current_limited_user),
 ) -> dict[str, Any]:
     """Canonical non-mutating quote for the current text draft."""
-    prompt_tokens = len(_quote_tokenizer.encode(form.prompt)) + form.context_tokens
+    import tiktoken
+
+    tokenizer = tiktoken.get_encoding("o200k_base")
+    prompt_tokens = len(tokenizer.encode(form.prompt)) + form.context_tokens
     return _grid_user_post(
         "/v1/account/credits/quote",
         user,

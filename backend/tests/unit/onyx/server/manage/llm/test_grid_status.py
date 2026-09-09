@@ -1,15 +1,14 @@
-from types import SimpleNamespace
-
 import httpx
 import pytest
 
+from onyx.db.models import User
 from onyx.error_handling.error_codes import OnyxErrorCode
 from onyx.error_handling.exceptions import OnyxError
 from onyx.server.manage.llm import grid_status
 
 
-def _user() -> SimpleNamespace:
-    return SimpleNamespace(id="chat-user", is_anonymous=False)
+def _user() -> User:
+    return User(id="chat-user")
 
 
 @pytest.fixture(autouse=True)
@@ -111,10 +110,12 @@ def test_grid_account_hides_upstream_error_details(
 def test_grid_text_quote_counts_prompt_and_context_and_uses_delegated_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import tiktoken
+
     calls: list[tuple[str, dict]] = []
     monkeypatch.setattr(grid_status, "grid_user_token", lambda _user: "gridu_user")
     monkeypatch.setattr(
-        grid_status._quote_tokenizer,
+        tiktoken.get_encoding("o200k_base"),
         "encode",
         lambda prompt: [1, 2, 3] if prompt == "hello grid" else [],
     )
@@ -180,11 +181,13 @@ def test_grid_text_quote_rejects_extra_or_oversized_inputs() -> None:
         == 32_768
     )
     with pytest.raises(ValueError):
-        grid_status.GridTextQuoteRequest(
-            model="gpt-oss-120b",
-            prompt="hello",
-            context_tokens=0,
-            unexpected=True,
+        grid_status.GridTextQuoteRequest.model_validate(
+            {
+                "model": "gpt-oss-120b",
+                "prompt": "hello",
+                "context_tokens": 0,
+                "unexpected": True,
+            }
         )
     with pytest.raises(ValueError):
         grid_status.GridTextQuoteRequest(

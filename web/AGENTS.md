@@ -25,6 +25,14 @@ connectors, administration, Craft/build experiences, and AIPG provider UX.
   proxy. Preserve sub-cent values, hide inactive promotional/daily pockets,
   show the Core quote before submission, and route insufficient-credit
   recovery to Console funding without exposing the Grid service key.
+- Chat image recovery uses the authenticated `/api/grid/images` journal routes,
+  never a new generation POST. Discovery is limited to visible signed-in
+  messages; SWR keys include the Chat user ID. Unknown receipts remain unknown
+  until Core confirms a terminal, including after browser reload. Image bytes
+  use the owner-checked `/content` subroute, not remote URLs from a response.
+  Keep normal, error and multi-model message surfaces aligned. Shared messages
+  omit the private message ID and must not enable receipt discovery. Recovering
+  an original image is distinct from a new user-requested paid generation.
 
 ## Work Guidance
 

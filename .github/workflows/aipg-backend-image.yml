@@ -1,0 +1,84 @@
+name: AIPG Backend Image
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aipg-backend-image-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend-image-smoke:
+    if: github.repository == 'AIPowerGrid/aipg-chat'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # ratchet:actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Record checked-out source
+        id: source
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # ratchet:docker/setup-buildx-action@v3
+
+      - name: Build actual runtime image
+        uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # ratchet:docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          platforms: linux/amd64
+          load: true
+          push: false
+          tags: aipg-chat-backend:ci
+          build-args: |
+            ONYX_VERSION=${{ steps.source.outputs.sha }}
+          labels: |
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
+
+      - name: Verify packaged source and offline imports
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: |
+          set -euo pipefail
+          test "$(docker image inspect aipg-chat-backend:ci --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')" = "$SOURCE_SHA"
+          paths=(
+            onyx/llm/aipg/identity_assertion.py
+            onyx/llm/aipg/image_recovery.py
+            onyx/db/grid_image_requests.py
+            onyx/db/models.py
+            onyx/server/manage/llm/grid_status.py
+            onyx/image_gen/providers/openai_img_gen.py
+            onyx/chat/process_message.py
+            onyx/tools/tool_constructor.py
+            onyx/tools/tool_implementations/images/image_generation_tool.py
+          )
+          for path in "${paths[@]}"; do
+            expected=$(sha256sum "backend/$path" | cut -d ' ' -f 1)
+            actual=$(docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+              --user 1001:1001 aipg-chat-backend:ci sha256sum "/app/$path" | cut -d ' ' -f 1)
+            test "$actual" = "$expected"
+          done
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --user 1001:1001 -e DISABLE_TELEMETRY=true -e LICENSE_ENFORCEMENT_ENABLED=false \
+            aipg-chat-backend:ci python -c \
+            'from onyx.llm.aipg.identity_assertion import grid_image_headers_factory; import onyx.tools.tool_constructor; import onyx.tools.tool_implementations.images.image_generation_tool; assert callable(grid_image_headers_factory)'
+          docker image inspect aipg-chat-backend:ci --format 'Verified image ID: {{.Id}}'
+
+      - name: Verify packaged Grid authentication without network access
+        run: |
+          docker run --rm --network none --cap-drop ALL --security-opt no-new-privileges \
+            --memory=2g --cpus=1 --user 1001:1001 \
+            -e AUTH_TYPE=basic -e DISABLE_TELEMETRY=true \
+            -e LICENSE_ENFORCEMENT_ENABLED=false -e LITELLM_LOCAL_MODEL_COST_MAP=true \
+            -e CORS_ALLOWED_ORIGIN=http://offline.test \
+            -v "$PWD/backend/scripts/verify_grid_billing_auth.py:/verify_grid_billing_auth.py:ro" \
+            aipg-chat-backend:ci python /verify_grid_billing_auth.py

@@ -34,6 +34,117 @@ value in both images.
 
 ## Deploy
 
+### Grid image billing gate
+
+Delegated image generation uses a request-local SDK client without retries or
+redirects. The HTTP stand-in regression proves one POST for 429/5xx/lost-response
+outcomes and header-only user identity; it does not prove a paid Core lifecycle.
+Grid image edits are disabled in Chat pending their own verification.
+A Grid key at a noncanonical image endpoint fails closed instead of bypassing
+delegation through the generic provider transport.
+
+Before enabling paid images in Chat, verify that the configured image endpoint
+and service key match the canonical Grid identity exchange, then run a funded
+tool call with the authenticated user's account and reconcile its reservation,
+settlement and reward eligibility. An uncertain response must not be presented
+as a free failure or automatically regenerated. Keep this path out of the paid
+launch until its complete browser-to-Core recovery behavior is verified.
+
+The pending journal migration `a1f092c7d8e3` adds owner/message-scoped request
+receipts and a one-submission claim guard. The candidate now wires the tool to
+the server-reserved assistant message and image slot, commits before POST and
+sends the UUID as Core's progress/client reference. It persists validated Core
+terminals and exposes owner-checked list/recovery endpoints under `/api/grid/images`.
+One assistant response may open one image tool-turn group, including parallel
+tool tabs and batch items. Later LLM-turn groups reject even after settlement:
+a failed asset download must recover the paid result, not buy another image.
+An account still in unbilled preview mode is rejected before generation.
+Real Postgres plus a local HTTP stand-in cover a killed submitting process,
+lost replies, repeated calls, partial batches and foreign-owner denial.
+The candidate browser now discovers receipts for visible authenticated messages
+and error responses. Unknown results offer a read-only check, completed results
+can be reopened/downloaded through the owner-checked `/content` subroute, and
+normally displayed images keep their originals collapsed until requested.
+Receipt caches are separated by Chat user; shared messages do not activate
+private receipt discovery. No recovery control calls the generation API.
+Still required: real funded Core/worker and account-linking canaries, including
+the complete deployed Chat stream, crash/reload and partial-batch paths. Local
+component tests and mocked browser responses do not prove those production gates.
+A new explicit assistant generation is a new paid intent; it is not a way to
+recover an earlier request.
+If deployed later, migrate before serving the new code. Keep the additive
+journal on rollback; its downgrade refuses nonempty data.
+
+#### Restored-database rehearsal (2026-09-09 UTC)
+
+Candidate `93fb5a7aa757cac60edcde55a7cfcdfb650caac4` was rehearsed against a
+private restore of the live PostgreSQL 15 database, not the live database:
+
+- Production started and remained at application `4ff336d32d` and Alembic
+  `01c63968ff8f`. The API container ID and start time were unchanged.
+- The custom-format backup was 4,082,000 bytes; SHA-256:
+  `d87393842c43bf6b618c1fcb2554f68823c2645d5b478ec21aa2e05127f5bd0c`.
+- The restore contained 136 existing public application tables. The real
+  Alembic `upgrade head` reached `a1f092c7d8e3`; a second upgrade was a no-op.
+  Row counts and content fingerprints of all 136 pre-existing tables matched
+  before and after both upgrades. The new journal had zero rows.
+- The one-shot migration used the current production backend image's
+  dependencies with the exact candidate backend source mounted read-only;
+  temporary directories and logging were writable tmpfs. This is migration
+  compatibility evidence, not a deployment of the candidate application image.
+- The scratch database and temporary database-credential file were removed.
+  The backup, configuration snapshot and successful `rehearsal-2/proof.json`
+  remain in the private `chat-93fb5a7aa7` release-check directory. Never commit
+  the backup or credential-bearing snapshots/logs.
+
+This rehearsal does not replace a fresh pre-cutover backup, current-head CI,
+the full application build, or funded end-to-end billing canaries. The later
+lazy-import/formatting cleanup does not change this migration.
+
+#### Packaged runtime rehearsal (2026-09-09 UTC)
+
+Both Linux/amd64 application Dockerfiles built successfully from pushed commit
+`65c656aa51d40c60e739db78ed1de93e2d6a9167`, using its clean Git archive rather
+than the operator worktree. The archive was 20,077,374 bytes; SHA-256:
+`d46057088f283d72dc1735a63e27a2fe69524973f20c21fda31175749679e7ea`.
+The separate builder was capped at two CPUs and 8 GiB RAM and received no
+production environment or credentials. These are operator-built rehearsal
+images, not published CI release artifacts or a production deployment.
+
+| Candidate image | Docker image ID |
+| --- | --- |
+| `aipg-chat-backend:billing-65c656aa51` | `sha256:468668c7cdc75be0fce102919f6027183702b44becd32ff593676c3426f67641` |
+| `aipg-chat-web:billing-65c656aa51` | `sha256:9304bb275de81134a92fee9b693a6a66f7722863abf73dc168bc19fe0a55bd71` |
+
+- Both images carry the exact source revision label and `ONYX_VERSION=65c656aa51`.
+  Ten packaged backend source files, including the image journal migration,
+  matched the archive's SHA-256 hashes.
+- The backend passed authentication-package imports and full application
+  route/auth checks as UID 1001 with networking disabled. Native basic auth
+  returned `403` with the unauthenticated error for account, image-list,
+  recovery and content reads. POST to recovery returned `405`.
+  No authentication dependency was mocked; ASGI lifespan was intentionally
+  skipped. This does not establish database-backed startup or signed-in access.
+- The frontend passed the complete Next production build, including TypeScript
+  and route generation. A temporary network-isolated server returned `200` for
+  the login page, all 32 referenced JavaScript assets and the PNG logo. Its API
+  backend was deliberately unavailable; rendering the page does not prove
+  Google/wallet login, account attribution or generation. The server was removed.
+- Production API, background and web containers remained on `4ff336d32d`, with
+  their original 2026-08-29 start times. No live application migration,
+  generation, charging activation or payout action was performed.
+
+The reusable [packaged-auth check](../../backend/scripts/verify_grid_billing_auth.py)
+now runs in hosted backend-image CI. It supplements, not replaces, database,
+ownership, funded recovery and full deployed application canaries. The private
+`chat-65c656aa51` release-check directory retains build logs and
+`build-proof.json`; it contains the exact tested image IDs and source hashes.
+The subsequent auth-smoke/CI/docs changes do not alter the packaged application
+source or migration. Revalidate current-head checks and release provenance
+before any cutover; this rehearsal does not waive queued inherited checks.
+
+### Application activation
+
 ```bash
 docker compose -f docker-compose.prod-no-letsencrypt.yml \
   up -d --no-deps api_server background web_server

@@ -1,5 +1,7 @@
 from types import SimpleNamespace
 
+from sqlalchemy.orm import Session
+
 from onyx.llm.aipg import grid_model_sync
 
 
@@ -24,7 +26,8 @@ def test_existing_managed_provider_uses_environment_connection(monkeypatch) -> N
         "grid-service-key",
     )
 
-    grid_model_sync._ensure_grid_provider(SimpleNamespace())
+    with Session() as session:
+        grid_model_sync._ensure_grid_provider(session)
 
     assert provider.api_base == "https://grid.example/v1"
     assert provider.api_key == "grid-service-key"

@@ -7,7 +7,12 @@ import React, {
   useEffect,
   useLayoutEffect,
 } from "react";
-import { Packet, StopReason } from "@/app/app/services/streamingModels";
+import {
+  Packet,
+  PacketType,
+  StopReason,
+} from "@/app/app/services/streamingModels";
+import GridImageRecovery from "@/app/app/message/messageComponents/GridImageRecovery";
 import CustomToolAuthCard from "@/app/app/message/messageComponents/CustomToolAuthCard";
 import { FullChatState } from "@/app/app/message/messageComponents/interfaces";
 import { FeedbackType } from "@/app/app/interfaces";
@@ -53,6 +58,7 @@ export interface AgentMessageProps {
   hideFooter?: boolean;
   /** Skip TTS streaming (used in multi-model where voice doesn't apply) */
   disableTTS?: boolean;
+  isGenerating?: boolean;
 }
 
 // TODO: Consider more robust comparisons:
@@ -67,6 +73,7 @@ function arePropsEqual(
     prev.nodeId === next.nodeId &&
     prev.messageId === next.messageId &&
     prev.currentFeedback === next.currentFeedback &&
+    prev.isGenerating === next.isGenerating &&
     // Compare packetCount (primitive) instead of rawPackets.length
     // The array is mutated in place, so reading .length from prev and next would return same value
     prev.packetCount === next.packetCount &&
@@ -102,6 +109,7 @@ const AgentMessage = React.memo(function AgentMessage({
   processingDurationSeconds,
   hideFooter,
   disableTTS,
+  isGenerating = false,
 }: AgentMessageProps) {
   const markdownRef = useRef<HTMLDivElement>(null);
   const finalAnswerRef = useRef<HTMLDivElement>(null);
@@ -352,6 +360,17 @@ const AgentMessage = React.memo(function AgentMessage({
           )}
       </div>
 
+      {messageId != null && messageId > 0 && (
+        <GridImageRecovery
+          messageId={messageId}
+          isGenerating={isGenerating}
+          displayedImageCount={generatedImageCount}
+          showUnavailable={rawPackets.some(
+            (packet) =>
+              packet.obj.type === PacketType.IMAGE_GENERATION_TOOL_START
+          )}
+        />
+      )}
       {/* Feedback buttons - only show when streaming and rendering complete */}
       {isComplete && !hideFooter && (
         <MessageToolbar

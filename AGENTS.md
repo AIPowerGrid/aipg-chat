@@ -78,6 +78,24 @@ OpenAI-compatible model provider while retaining the broader Onyx application.
 
 ## Verification
 
+- AIPG's Python unit, type-check, and database workflows use GitHub-hosted Ubuntu runners;
+  the upstream RunsOn fleet and S3 cache are not available to this fork.
+  The same test commands and hash-verified requirements remain mandatory.
+  Migration tests use the existing disposable Postgres Compose service directly
+  from Docker Hub rather than the upstream private ECR image cache.
+  `aipg-backend-image.yml` builds the real Linux/amd64 runtime Dockerfile without
+  private runners or registry credentials, verifies packaged billing-source
+  hashes, and imports the affected modules as the application user offline.
+  It is build evidence only: it does not publish a release artifact or replace
+  deployment, account-attribution, or live billing canaries.
+  An offline packaged-application smoke also verifies the real basic-auth
+  dependency rejects anonymous account/image-recovery reads and that recovery
+  refuses POST. It skips startup lifespan and supplies no production credentials.
+  The hosted Python job also runs the Grid image HTTP stand-in regression:
+  real SDK calls, no paid jobs or private services. It checks single-shot
+  submission, delegated-header isolation and redirect rejection.
+  Other inherited integration workflows still require their own infrastructure;
+  queued checks are not successful checks or production verification.
 - Backend gates are documented in `backend/AGENTS.md` and the testing sections
   below.
 - Frontend gates are documented in `web/AGENTS.md`.

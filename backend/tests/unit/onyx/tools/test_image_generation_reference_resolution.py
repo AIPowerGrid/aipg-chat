@@ -14,12 +14,14 @@ from unittest.mock import patch
 import pytest
 
 from onyx.tools.models import ToolCallException
+from onyx.tools.models import ToolExecutionException
 from onyx.tools.tool_implementations.images.image_generation_tool import (
     ImageGenerationTool,
 )
 from onyx.tools.tool_implementations.images.image_generation_tool import (
     REFERENCE_IMAGE_FILE_IDS_FIELD,
 )
+from onyx.tools.tool_implementations.images.models import ImageShape
 
 
 def _make_tool(
@@ -108,3 +110,38 @@ class TestResolveReferenceImageFileIds:
             llm_kwargs={REFERENCE_IMAGE_FILE_IDS_FIELD: ["a", "b", "c", "d"]},
         )
         assert result == ["a", "b"]
+
+
+def test_image_requests_use_owned_durable_slots() -> None:
+    tool = _make_tool()
+    tool._extra_headers_factory = MagicMock()
+    recovery = MagicMock()
+    recovery.generate.return_value.result = {"media": []}
+    tool._grid_recovery = recovery
+    tool._grid_message_id = 42
+    with patch(
+        "onyx.tools.tool_implementations.images.image_generation_tool.image_base64",
+        return_value="dGVzdA==",
+    ):
+        tool._generate_image("first", ImageShape.SQUARE, request_slot="image:0")
+        tool._generate_image("second", ImageShape.SQUARE, request_slot="image:1")
+    assert [c.kwargs["slot"] for c in recovery.generate.call_args_list] == [
+        "image:0",
+        "image:1",
+    ]
+    assert all(c.kwargs["message_id"] == 42 for c in recovery.generate.call_args_list)
+    generate_image = tool.img_provider.generate_image
+    assert isinstance(generate_image, MagicMock)
+    generate_image.assert_not_called()
+
+
+def test_image_without_durable_context_never_calls_provider() -> None:
+    tool = _make_tool()
+    tool._extra_headers_factory = MagicMock(
+        side_effect=RuntimeError("exchange unavailable")
+    )
+    with pytest.raises(ToolExecutionException):
+        tool._generate_image("test", ImageShape.SQUARE)
+    generate_image = tool.img_provider.generate_image
+    assert isinstance(generate_image, MagicMock)
+    generate_image.assert_not_called()

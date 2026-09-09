@@ -1,22 +1,27 @@
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
-from types import SimpleNamespace
+from unittest.mock import MagicMock
 
 import httpx
 import pytest
 
+from onyx.configs.constants import ANONYMOUS_USER_UUID
+from onyx.db.models import User
 from onyx.llm.aipg import identity_assertion
+from onyx.server.manage.llm.models import LLMProviderView
 
 
-def _provider(name: str = "AI Power Grid") -> SimpleNamespace:
-    return SimpleNamespace(
+def _provider(name: str = "AI Power Grid") -> MagicMock:
+    provider = MagicMock(
+        spec=LLMProviderView,
         id=1,
-        name=name,
         provider="openai-compatible",
         api_key="grid_test_bridge",
         api_base="https://api.aipowergrid.io/v1",
     )
+    provider.name = name
+    return provider
 
 
 def _headers(headers, provider, user) -> dict[str, str]:
@@ -44,7 +49,7 @@ def test_google_user_uses_canonical_native_token(monkeypatch) -> None:
         return "gridu_canonical"
 
     monkeypatch.setattr(identity_assertion, "_service_token", fake_token)
-    user = SimpleNamespace(id="user-id", is_anonymous=False)
+    user = User(id="user-id")
     headers = _headers(
         {
             "X-Grid-User-Assertion": "attacker-value",
@@ -84,8 +89,89 @@ def test_anonymous_user_gets_no_grid_identity(monkeypatch) -> None:
         "_service_token",
         lambda *_args: pytest.fail("anonymous user exchanged identity"),
     )
-    user = SimpleNamespace(is_anonymous=True)
+    user = User(id=ANONYMOUS_USER_UUID)
     assert _headers({}, _provider(), user) == {}
+
+
+def test_image_headers_bind_each_user_and_refresh_per_request(monkeypatch) -> None:
+    calls = []
+
+    def fake_token(key, subject):
+        calls.append((key, subject))
+        return f"gridu_image_{len(calls)}"
+
+    monkeypatch.setattr(identity_assertion, "_service_token", fake_token)
+    user_a = User(id="user-a")
+    user_b = User(id="user-b")
+    provider = _provider()
+    first = identity_assertion.grid_image_headers_factory(
+        provider.api_base,
+        provider.api_key,
+        user_a,
+    )
+    second = identity_assertion.grid_image_headers_factory(
+        provider.api_base,
+        provider.api_key,
+        user_b,
+    )
+    assert first is not None and second is not None
+    assert calls == []
+    assert first() == {"X-Grid-User-Token": "gridu_image_1"}
+    assert second() == {"X-Grid-User-Token": "gridu_image_2"}
+    assert first() == {"X-Grid-User-Token": "gridu_image_3"}
+    assert calls == [
+        ("grid_test_bridge", "aipg-chat:user-a"),
+        ("grid_test_bridge", "aipg-chat:user-b"),
+        ("grid_test_bridge", "aipg-chat:user-a"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "user,key",
+    [
+        (None, "grid_test_bridge"),
+        (User(id=ANONYMOUS_USER_UUID), "grid_test_bridge"),
+        (User(id="user"), None),
+        (User(id="user"), "other-service"),
+    ],
+)
+def test_image_headers_reject_missing_identity_or_wrong_service(monkeypatch, user, key):
+    monkeypatch.setattr(
+        identity_assertion,
+        "_service_token",
+        lambda *_args: pytest.fail("invalid image identity must not exchange"),
+    )
+    factory = identity_assertion.grid_image_headers_factory(
+        _provider().api_base,
+        key,
+        user,
+    )
+    assert factory is not None
+    with pytest.raises(identity_assertion.GridIdentityError):
+        factory()
+
+
+@pytest.mark.parametrize(
+    "base", [None, "https://example.com/v1", "https://api.aipowergrid.io.evil.test/v1"]
+)
+def test_image_headers_never_send_grid_identity_to_other_endpoint(base):
+    factory = identity_assertion.grid_image_headers_factory(
+        base, "grid_test_bridge", User(id="user")
+    )
+    assert factory is not None
+    with pytest.raises(
+        identity_assertion.GridIdentityError, match="endpoint must match"
+    ):
+        factory()
+
+
+def test_non_grid_image_provider_keeps_its_own_transport():
+    assert (
+        identity_assertion.grid_image_headers_factory(
+            "https://example.com/v1", "other-provider-key", User(id="user")
+        )
+        is None
+    )
 
 
 def test_internal_call_uses_non_promotional_app_identity(monkeypatch) -> None:
@@ -114,7 +200,7 @@ def test_native_token_is_cached_between_llm_attempts(monkeypatch) -> None:
         )
 
     monkeypatch.setattr(identity_assertion.httpx, "post", fake_post)
-    user = SimpleNamespace(id="user-id", is_anonymous=False)
+    user = User(id="user-id")
     clean, factory = identity_assertion.grid_identity_headers({}, _provider(), user)
     assert clean == {}
     assert factory is not None
@@ -207,8 +293,7 @@ async def test_google_exchange_invalidates_pre_link_token(monkeypatch) -> None:
 
     with identity_assertion._cache_lock:
         assert all(
-            key.partition(":")[2] != subject
-            for key in identity_assertion._token_cache
+            key.partition(":")[2] != subject for key in identity_assertion._token_cache
         )
         assert f"{'b' * 64}:other-subject" in identity_assertion._token_cache
 
