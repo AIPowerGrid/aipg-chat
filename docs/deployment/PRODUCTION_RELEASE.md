@@ -7,6 +7,11 @@ Status: current operator contract for the Docker Compose deployment of
 
 - Build from an exact pushed commit, never a dirty checkout.
 - Extract each source archive into a new immutable release directory.
+- Preserve tracked file/directory permissions while extracting (GNU tar
+  `--same-permissions`). A private operator umask must not turn image assets
+  into root-owned `0700` directories in the Docker context. Keep the enclosing
+  release/audit directories private and copy secrets separately with restrictive
+  permissions; do not recursively relax a release containing `.env` files.
 - Copy the existing production `.env` at deploy time; never place it in the
   archive or Git.
 - Set `IMAGE_TAG` to a unique tag and `ONYX_VERSION` to the release commit's
@@ -31,6 +36,17 @@ Before deployment, inspect both image tags and run a one-shot backend import
 smoke for authentication-critical packages. At minimum verify `eth-account`,
 `pydantic`, `starlette`, and `cryptography`, plus the `ONYX_VERSION` environment
 value in both images.
+
+Also start the built web image as its default unprivileged user with networking
+disabled. Request `/auth/login` and every referenced JavaScript asset through
+container-local HTTP, require `200`, and verify it stays running. A successful
+Next build alone does not prove that its runtime user can read public assets.
+Stop and remove the disposable smoke container afterward.
+
+Compose configuration validation requires `.env.nginx` even when replacing only
+the application services. Preserve that file from the running Nginx container's
+labelled working directory in both candidate and rollback directories. Do not
+recreate Nginx or change its configuration as a side effect of this preparation.
 
 ## Deploy
 
@@ -181,6 +197,30 @@ Do not declare the release healthy until all of these pass:
 
 ## Rollback
 
-Run the same `up -d --no-deps` command from the previous immutable release
-directory, then validate and reload Nginx again. Repeat the public health gates
-and retain the failed release for diagnosis.
+The old API startup command runs `alembic upgrade head`; retaining an additive
+table is not enough when the old image cannot recognize the new revision ID.
+For rollback from `a1f092c7d8e3` to the `4ff336d32d` application, supply the
+reviewed `a1f092c7d8e3_grid_image_recovery_journal.py` migration file as a read-only
+bind mount at the same `/app/alembic/versions/` path using a rollback-only Compose
+overlay. The migration was verified compatible with the old image dependencies.
+Do not stamp backwards, downgrade the journal, or drop recovery records.
+
+Run `up -d --no-deps --no-build` from the previous immutable release directory
+with that overlay, then validate and reload Nginx after API startup completes.
+Repeat the public health gates and retain the failed release for diagnosis.
+
+### September 9 release exception and first-attempt findings
+
+The maintainer approved releasing merged commit
+`085e7394b50b2e72ee8a9181a073412490324918` using the passing AIPG-hosted unit,
+type, PostgreSQL, HTTP, Jest and packaged-auth checks. The 38 inherited private
+runner checks were still queued, not passed. This is a release-specific exception,
+not permission to waive funded browser/worker canaries or enable global billing.
+
+The first activation exposed root-owned unreadable web assets from archive
+extraction under umask `077`. The web container restarted; the application was
+rolled back. That rollback also exposed the missing Alembic revision dependency
+described above. The reviewed read-only migration mount restored the old API;
+public `/api/version` again returned `4ff336d32d`. No paid generation ran during
+this attempt. Corrected packaging uses distinct `grid-085e7394b5-r2` image tags
+and must pass the new web-runtime gate before another cutover.
