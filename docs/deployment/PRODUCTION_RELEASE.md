@@ -224,3 +224,36 @@ described above. The reviewed read-only migration mount restored the old API;
 public `/api/version` again returned `4ff336d32d`. No paid generation ran during
 this attempt. Corrected packaging uses distinct `grid-085e7394b5-r2` image tags
 and must pass the new web-runtime gate before another cutover.
+
+### September 9 corrected activation and paid canary
+
+The corrected release is deployed from the same reviewed merge commit using
+`grid-085e7394b5-r2` backend/web image tags. Before cutover, the web image ran as
+UID 1001 with networking disabled and returned `200` for login and all 22
+referenced JavaScript assets. A fresh database backup was restored to scratch;
+the additive journal migration was applied twice and all 137 restored tables
+retained their fingerprints. The scratch database was then removed.
+
+Only API, background and web application containers were recreated. Database,
+Redis, search, storage and model-server containers were preserved; Nginx was
+validated and reloaded. Public health gates returned their expected statuses,
+including anonymous account access denied with `403`. Existing signed-in
+Google access survived and reported the canonical purchased balance. The live
+version and signed-in footer both show `085e7394b5`.
+
+The sole configured Krea 2 Turbo image provider was aligned to the existing
+server-side Grid endpoint and service credential; no credential was exposed to
+the browser. Under a separately approved owner-only Core charging canary:
+
+- A real streamed text reply completed and its reservation/refund reconciled.
+- A real image-tool invocation produced one image and exactly one completed
+  Chat image journal entry linked to its Grid job.
+- Read-only reconciliation showed no double debit, balance discrepancy or
+  stranded reservation across these jobs.
+
+This is **not a completed billing-launch signoff**. The broader Core canary
+audit raised a separate result-evidence gate, so further paid tests were paused
+for a Core fix and repeat proof. Chat image crash/recovery and the remaining
+modalities still require their own end-to-end gates. Global charging and payout
+resumption remain off. Private release-check artifacts retain image, restore,
+container and activation evidence; do not publish account/job IDs or credentials.
