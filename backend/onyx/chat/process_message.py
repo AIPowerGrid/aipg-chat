@@ -97,6 +97,7 @@ from onyx.hooks.executor import HookSkipped
 from onyx.hooks.executor import HookSoftFailed
 from onyx.hooks.points.query_processing import QueryProcessingPayload
 from onyx.hooks.points.query_processing import QueryProcessingResponse
+from onyx.llm.aipg.credit_errors import grid_credit_error
 from onyx.llm.factory import get_llm_for_persona
 from onyx.llm.factory import get_llm_token_counter
 from onyx.llm.interfaces import LLM
@@ -1085,6 +1086,7 @@ def _run_models(
     # Set to True when a model raises an exception (distinct from "still running").
     # Used in the stop-button path to avoid calling completion for errored models.
     model_errored: list[bool] = [False] * n_models
+    model_credit_errors: list[str | None] = [None] * n_models
     persist_lock = threading.Lock()
     persisted: list[bool] = [False] * n_models
     finished_count: list[int] = [0]
@@ -1270,6 +1272,9 @@ def _run_models(
             model_succeeded[model_idx] = True
 
         except Exception as e:
+            model_credit_errors[model_idx] = grid_credit_error(
+                e, model_llm.config.api_base
+            )
             model_errored[model_idx] = True
             merged_queue.put((model_idx, e))
 
@@ -1299,7 +1304,7 @@ def _run_models(
                     ChatMessage, setup.reserved_messages[model_idx].id
                 )
                 if msg is not None:
-                    error_text = (
+                    error_text = model_credit_errors[model_idx] or (
                         "Error from %s: model encountered an error during generation."
                         % setup.model_display_names[model_idx]
                     )
@@ -1363,6 +1368,16 @@ def _run_models(
                     # Yield a tagged error for this model but keep the other models running.
                     # Do NOT decrement models_remaining — _run_model's finally always posts
                     # _MODEL_DONE, which is the sole completion signal.
+                    credit_error = model_credit_errors[model_idx]
+                    if credit_error:
+                        yield StreamingError(
+                            error=credit_error,
+                            error_code="PAYMENT_REQUIRED",
+                            is_retryable=False,
+                            details={"model_index": model_idx},
+                        )
+                        last_packet_yield = time.monotonic()
+                        continue
                     error_msg = str(item)
                     stack_trace = "".join(
                         traceback.format_exception(type(item), item, item.__traceback__)
