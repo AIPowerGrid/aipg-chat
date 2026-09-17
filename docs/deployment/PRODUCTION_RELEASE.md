@@ -5,11 +5,12 @@ Status: current operator contract for the Docker Compose deployment of
 
 ## Verified state, September 17
 
-The live API, background and web containers run `grid-085e7394b5-r2`.
+The live API, background and web containers run `grid-840a05624d`.
 Read-only production inspection confirms Alembic `a1f092c7d8e3` and the image
-recovery journal are already deployed. Main `c0bceab01f` differs from that
-release source only in this deployment document; do not mistake earlier
-candidate/rehearsal wording below for an outstanding migration.
+recovery journal are already deployed. The release source is PR #4 head
+`840a05624db6d55536ee5984521d1de11fd17a90`, whose tree exactly matches merge
+commit `1269aeec3b`. This release adds no migration. The previous
+`grid-085e7394b5-r2` application remains the rollback target.
 
 Core charging is now on. Live customer canaries have demonstrated shared
 allowance, free and paid generation, and insufficient-credit handling across
@@ -18,11 +19,41 @@ balances, ledger discrepancies or stale holds. These are dated observations,
 not permanent guarantees. The September 9 statements about charging and
 payouts being off describe that earlier release only.
 
-Chat's low-credit rejection is correct, but reloading currently hides the
-error and funding action. PR #4 contains the recovery fix; it is not deployed
-as of this snapshot. Failed-generation customer refunds and the broader Chat
+Chat's low-credit error and funding action now survive reload, verified in a
+real signed-in customer session after deployment. Errors saved before this fix
+retain their original generic message; the release does not rewrite history.
+Failed-generation customer refunds and the broader Chat
 image crash/recovery paths still require live proof. A historical refund audit
 or a mocked transport test must not be presented as that proof.
+
+### September 17 credit-error recovery release
+
+The maintainer explicitly approved a release-specific exception for 36 queued
+upstream-private-runner jobs. They did not pass. The 21 successful hosted
+checks, exact-source packaged backend/auth checks, and offline web login/assets
+checks supplied the replacement release evidence. This is not a blanket CI
+exception for later releases.
+
+A fresh custom-format backup restored successfully to an isolated scratch
+database with 138 public tables and two image journal rows; schema remained
+`a1f092c7d8e3`. Scratch was removed after verification. Production environment
+values were preserved except the immutable image/version labels. Only API,
+background and web were replaced; all other container IDs and start times
+remained unchanged. Nginx was validated and reloaded, not recreated.
+
+Public health gates passed at 15:06 UTC, including anonymous account denial.
+All application containers were running with zero restarts. The synthetic
+low-credit canary generated handled provider HTTP 402 traces, with no unrelated
+startup/fatal/panic errors found. The signed-in browser retained its account
+and balance; a new rejection retained the safe error and Add credits action
+after reload. Read-only Core reconciliation found no extra reservation or
+debit, no stale holds or balance discrepancies, and charging still on.
+
+Rollback uses the retained `grid-085e7394b5-r2` application and unchanged
+schema; the older September 9 migration overlay is not needed for this pair.
+Private release-check evidence contains the backup checksum, exact image IDs,
+environment checks and activation results. Do not publish credentials or
+customer identifiers from those artifacts.
 
 ## Release rules
 
