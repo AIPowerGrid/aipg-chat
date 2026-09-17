@@ -19,6 +19,11 @@ connectors, administration, Craft/build experiences, and AIPG provider UX.
 
 - Follow the detailed frontend contracts below.
 - Secrets and Grid/provider keys remain server-side.
+- The compact model picker tooltip shows optional Core `pricing` metadata from
+  the authenticated status proxy: USD input/output per million tokens and
+  standard versus model-specific tariff. Never infer prices from model names
+  or turn missing metadata into a zero/free price. Core quotes and holds remain
+  the billing authority; these are base rates before account discounts.
 - Craft preview/build surfaces preserve session ownership and never trust
   sandbox-rendered content as application instructions.
 - Chat credit UI reads only the authenticated `/api/grid/account` backend

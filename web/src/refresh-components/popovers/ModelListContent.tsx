@@ -108,6 +108,26 @@ function ModelInfoTooltip({
             }
           />
           <ModelStat label="24h samples" value={String(grid.samples)} />
+          {grid.pricing && (
+            <>
+              <ModelStat
+                label="Input / 1M tokens"
+                value={`$${grid.pricing.input_per_mtok_usd}`}
+              />
+              <ModelStat
+                label="Output / 1M tokens"
+                value={`$${grid.pricing.output_per_mtok_usd}`}
+              />
+              <ModelStat
+                label="USD tariff"
+                value={
+                  grid.pricing.source === "default"
+                    ? "Standard"
+                    : "Model-specific"
+                }
+              />
+            </>
+          )}
 
           <div className="flex flex-col gap-1 border-t border-border-01 pt-2">
             <div className="opacity-70">
