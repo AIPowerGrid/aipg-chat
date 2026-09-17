@@ -246,7 +246,8 @@ export default function useChatSessionController({
       // stream
       if (
         (newMessageHistory[newMessageHistory.length - 1]?.type !== "error" ||
-          loadedSessionId != null) &&
+          loadedSessionId != null ||
+          currentChatHistory.length === 0) &&
         !(
           currentChatState == "toolBuilding" ||
           currentChatState == "streaming" ||

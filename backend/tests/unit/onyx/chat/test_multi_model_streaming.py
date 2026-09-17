@@ -288,6 +288,53 @@ class TestRunModels:
     still run but return immediately since run_llm_loop is mocked.
     """
 
+    def test_credit_rejection_persists_safe_error_without_retry(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from litellm.exceptions import APIError
+
+        from onyx.llm.aipg.credit_errors import GRID_CREDIT_ERROR
+
+        monkeypatch.setenv("AIPG_GRID_API_BASE", "https://grid.example/v1")
+        setup = _make_setup()
+        setup.llms[0].config.api_base = "https://grid.example/v1"
+        session = MagicMock()
+        message = session.get.return_value
+        context = MagicMock()
+        context.__enter__.return_value = session
+        error = APIError(
+            status_code=402,
+            message="insufficient credits; private-upstream-token",
+            llm_provider="openai",
+            model="gpt-oss-120b",
+        )
+        with (
+            patch("onyx.chat.process_message.run_llm_loop", side_effect=error) as run,
+            patch("onyx.chat.process_message.construct_tools", return_value={}),
+            patch("onyx.chat.process_message.llm_loop_completion_handle") as complete,
+            patch(
+                "onyx.chat.process_message.get_llm_token_counter",
+                return_value=lambda _: 0,
+            ),
+            patch(
+                "onyx.chat.process_message.get_session_with_current_tenant",
+                return_value=context,
+            ),
+        ):
+            results = _run_models_collect(setup)
+
+        run.assert_called_once()
+        complete.assert_not_called()
+        session.commit.assert_called_once()
+        assert message.message == message.error == GRID_CREDIT_ERROR
+        errors = [result for result in results if isinstance(result, StreamingError)]
+        assert len(errors) == 1
+        assert errors[0].error == GRID_CREDIT_ERROR
+        assert errors[0].error_code == "PAYMENT_REQUIRED"
+        assert errors[0].is_retryable is False
+        assert not errors[0].stack_trace
+        assert "private-upstream-token" not in errors[0].model_dump_json()
+
     def test_n1_overall_stop_from_llm_loop_passes_through(self) -> None:
         """OverallStop emitted by run_llm_loop is passed through the drain loop unchanged."""
 

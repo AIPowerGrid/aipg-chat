@@ -25,6 +25,11 @@ connectors, administration, Craft/build experiences, and AIPG provider UX.
   proxy. Preserve sub-cent values, hide inactive promotional/daily pockets,
   show the Core quote before submission, and route insufficient-credit
   recovery to Console funding without exposing the Grid service key.
+- Saved Chat errors render with their original message, including a labeled
+  single-model response and older failed turns. Hydrate them on a cold reload;
+  do not depend on ephemeral streaming errors. Credit failures show funding,
+  not regeneration. Loading history or following a funding link must never
+  resubmit inference. True multi-model errors remain in their response panels.
 - Chat image recovery uses the authenticated `/api/grid/images` journal routes,
   never a new generation POST. Discovery is limited to visible signed-in
   messages; SWR keys include the Chat user ID. Unknown receipts remain unknown

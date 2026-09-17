@@ -351,36 +351,45 @@ const ChatUI = React.memo(
                     messageId={message.messageId}
                     showUnavailable
                   />
+                  <ErrorBanner
+                    error={message.message}
+                    errorCode={message.errorCode || undefined}
+                    isRetryable={message.isRetryable ?? true}
+                    details={message.errorDetails || undefined}
+                    stackTrace={message.stackTrace || undefined}
+                    resubmit={
+                      i === messages.length - 1 ? onResubmit : undefined
+                    }
+                  />
                 </div>
               );
             }
             return null;
           })}
 
-          {/* Error banner when last message is user message or error type.
-              Skip for multi-model per-panel errors — those are shown in
-              their own panel, not as a global banner. */}
-          {(((error !== null || loadError !== null) &&
-            messages[messages.length - 1]?.type === "user") ||
-            (messages[messages.length - 1]?.type === "error" &&
-              !messages[messages.length - 1]?.modelDisplayName)) && (
-            <div className={`p-4 w-full ${MSG_MAX_W} self-center`}>
-              <ErrorBanner
-                resubmit={onResubmit}
-                error={error || loadError || ""}
-                errorCode={
-                  messages[messages.length - 1]?.errorCode || undefined
-                }
-                isRetryable={messages[messages.length - 1]?.isRetryable ?? true}
-                details={
-                  messages[messages.length - 1]?.errorDetails || undefined
-                }
-                stackTrace={
-                  messages[messages.length - 1]?.stackTrace || undefined
-                }
-              />
-            </div>
-          )}
+          {/* Failures before an assistant placeholder exists are session-level.
+              Persisted and multi-model errors render with their message above. */}
+          {(error !== null || loadError !== null) &&
+            messages[messages.length - 1]?.type === "user" && (
+              <div className={`p-4 w-full ${MSG_MAX_W} self-center`}>
+                <ErrorBanner
+                  resubmit={onResubmit}
+                  error={error || loadError || ""}
+                  errorCode={
+                    messages[messages.length - 1]?.errorCode || undefined
+                  }
+                  isRetryable={
+                    messages[messages.length - 1]?.isRetryable ?? true
+                  }
+                  details={
+                    messages[messages.length - 1]?.errorDetails || undefined
+                  }
+                  stackTrace={
+                    messages[messages.length - 1]?.stackTrace || undefined
+                  }
+                />
+              </div>
+            )}
         </div>
         {/* Dynamic spacer for "fresh chat" effect - pushes content up when new message is sent */}
         <DynamicBottomSpacer anchorNodeId={anchorNodeId} />

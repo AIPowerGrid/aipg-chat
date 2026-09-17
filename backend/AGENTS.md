@@ -84,6 +84,13 @@ Craft/build execution control plane.
   `o200k_base` counting proxy and the same 32,768-token default reservation
   ceiling as Core; Core's atomic reserve remains authoritative when context
   changes or requests race.
+- A Grid text 402 with an insufficient-credit reason is saved to the existing
+  assistant-message error field as a fixed client-safe string. Match the
+  configured Grid endpoint and HTTP status, including exception wrappers;
+  unpriced-model errors and other providers are not funding errors. Streaming
+  uses the same safe message with no stack trace and no automatic retry.
+  Never persist an upstream exception body, delegated token, or provider key
+  to recover an error after reload. Core remains the billing authority.
 - Use `OnyxError`, typed error codes, and the global error envelope described in
   the root guide; do not add ad-hoc `HTTPException` responses.
 - Craft/build routes require the feature gate and authenticated resource
