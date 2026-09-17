@@ -3,6 +3,58 @@
 Status: current operator contract for the Docker Compose deployment of
 `aipg.chat`.
 
+## Verified state, September 17
+
+The live API, background and web containers run `grid-840a05624d`.
+Read-only production inspection confirms Alembic `a1f092c7d8e3` and the image
+recovery journal are already deployed. The release source is PR #4 head
+`840a05624db6d55536ee5984521d1de11fd17a90`, whose tree exactly matches merge
+commit `1269aeec3b`. This release adds no migration. The previous
+`grid-085e7394b5-r2` application remains the rollback target.
+
+Core charging is now on. Live customer canaries have demonstrated shared
+allowance, free and paid generation, and insufficient-credit handling across
+Chat, Art and Music. A September 17 read-only reconciliation found no negative
+balances, ledger discrepancies or stale holds. These are dated observations,
+not permanent guarantees. The September 9 statements about charging and
+payouts being off describe that earlier release only.
+
+Chat's low-credit error and funding action now survive reload, verified in a
+real signed-in customer session after deployment. Errors saved before this fix
+retain their original generic message; the release does not rewrite history.
+Failed-generation customer refunds and the broader Chat
+image crash/recovery paths still require live proof. A historical refund audit
+or a mocked transport test must not be presented as that proof.
+
+### September 17 credit-error recovery release
+
+The maintainer explicitly approved a release-specific exception for 36 queued
+upstream-private-runner jobs. They did not pass. The 21 successful hosted
+checks, exact-source packaged backend/auth checks, and offline web login/assets
+checks supplied the replacement release evidence. This is not a blanket CI
+exception for later releases.
+
+A fresh custom-format backup restored successfully to an isolated scratch
+database with 138 public tables and two image journal rows; schema remained
+`a1f092c7d8e3`. Scratch was removed after verification. Production environment
+values were preserved except the immutable image/version labels. Only API,
+background and web were replaced; all other container IDs and start times
+remained unchanged. Nginx was validated and reloaded, not recreated.
+
+Public health gates passed at 15:06 UTC, including anonymous account denial.
+All application containers were running with zero restarts. The synthetic
+low-credit canary generated handled provider HTTP 402 traces, with no unrelated
+startup/fatal/panic errors found. The signed-in browser retained its account
+and balance; a new rejection retained the safe error and Add credits action
+after reload. Read-only Core reconciliation found no extra reservation or
+debit, no stale holds or balance discrepancies, and charging still on.
+
+Rollback uses the retained `grid-085e7394b5-r2` application and unchanged
+schema; the older September 9 migration overlay is not needed for this pair.
+Private release-check evidence contains the backup checksum, exact image IDs,
+environment checks and activation results. Do not publish credentials or
+customer identifiers from those artifacts.
+
 ## Release rules
 
 - Build from an exact pushed commit, never a dirty checkout.
@@ -66,8 +118,8 @@ settlement and reward eligibility. An uncertain response must not be presented
 as a free failure or automatically regenerated. Keep this path out of the paid
 launch until its complete browser-to-Core recovery behavior is verified.
 
-The pending journal migration `a1f092c7d8e3` adds owner/message-scoped request
-receipts and a one-submission claim guard. The candidate now wires the tool to
+The deployed journal migration `a1f092c7d8e3` adds owner/message-scoped request
+receipts and a one-submission claim guard. The implementation wires the tool to
 the server-reserved assistant message and image slot, commits before POST and
 sends the UUID as Core's progress/client reference. It persists validated Core
 terminals and exposes owner-checked list/recovery endpoints under `/api/grid/images`.
@@ -77,19 +129,20 @@ a failed asset download must recover the paid result, not buy another image.
 An account still in unbilled preview mode is rejected before generation.
 Real Postgres plus a local HTTP stand-in cover a killed submitting process,
 lost replies, repeated calls, partial batches and foreign-owner denial.
-The candidate browser now discovers receipts for visible authenticated messages
+The browser discovers receipts for visible authenticated messages
 and error responses. Unknown results offer a read-only check, completed results
 can be reopened/downloaded through the owner-checked `/content` subroute, and
 normally displayed images keep their originals collapsed until requested.
 Receipt caches are separated by Chat user; shared messages do not activate
 private receipt discovery. No recovery control calls the generation API.
-Still required: real funded Core/worker and account-linking canaries, including
-the complete deployed Chat stream, crash/reload and partial-batch paths. Local
+Initial funded Core/worker and existing-account canaries passed during the
+corrected September 9 release below. Still required: broader account-linking,
+crash/reload and partial-batch paths through the complete Chat stream. Local
 component tests and mocked browser responses do not prove those production gates.
 A new explicit assistant generation is a new paid intent; it is not a way to
 recover an earlier request.
-If deployed later, migrate before serving the new code. Keep the additive
-journal on rollback; its downgrade refuses nonempty data.
+For an installation predating this migration, migrate before serving the new
+code. Keep the additive journal on rollback; its downgrade refuses nonempty data.
 
 #### Restored-database rehearsal (2026-09-09 UTC)
 
