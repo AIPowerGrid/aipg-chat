@@ -32,6 +32,13 @@ export interface GridModelStatus {
   // model — auto-detected per backend (vLLM max_model_len, etc.). null until a
   // worker reports it.
   max_context_length: number | null;
+  pricing?: {
+    currency: "USD";
+    input_per_mtok_usd: number;
+    output_per_mtok_usd: number;
+    source: "model" | "default";
+    version: string;
+  } | null;
 }
 
 export interface GridAccountSummary {
