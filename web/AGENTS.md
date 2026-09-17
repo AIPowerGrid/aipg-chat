@@ -41,6 +41,11 @@ connectors, administration, Craft/build experiences, and AIPG provider UX.
 
 ## Verification
 
+- `src/app/app/message/Resubmit.test.tsx` renders the actual error banner and
+  Opal controls: insufficient-credit errors offer Console funding without a
+  regenerate action, worker failures require an explicit retry, and
+  non-retryable authentication errors offer neither. These component tests do
+  not prove live Core debits, refunds, or a customer's zero-credit session.
 - Use the lint, type, test, and Playwright commands documented below for the
   touched surface.
 - Run `bun audit --production` for dependency changes. An unresolved high
