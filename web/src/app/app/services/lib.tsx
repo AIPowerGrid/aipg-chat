@@ -360,7 +360,7 @@ export function processRawChatHistory(
       // all that matters is that the nodeId is unique for a given chat session
       nodeId: messageInfo.message_id,
       messageId: messageInfo.message_id,
-      message: messageInfo.message,
+      message: messageInfo.error || messageInfo.message,
       type: messageInfo.error
         ? "error"
         : (messageInfo.message_type as "user" | "assistant"),
