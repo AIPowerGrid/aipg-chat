@@ -51,8 +51,9 @@ Craft/build execution control plane.
   lost responses and 429/5xx errors; it is not a funded Core billing canary.
   Grid image edits remain disabled in Chat until their transport, recipe and
   billing lifecycle are verified. Other providers' image editing is unchanged.
-- `onyx/db/grid_image_requests.py` and Alembic `a1f092c7d8e3` back the candidate
-  Chat image recovery flow (not deployed). `image_recovery.py` binds the owner,
+- `onyx/db/grid_image_requests.py` and Alembic `a1f092c7d8e3` back the
+  Chat image recovery flow, deployed in `085e7394b5-r2` on September 9.
+  `image_recovery.py` binds the owner,
   service identity and tenant; `process_message.py` supplies the reserved
   assistant-message ID, never a user-message ID or an LLM-supplied identifier.
   Tool placement and image index distinguish independent items and models.
@@ -74,9 +75,11 @@ Craft/build execution control plane.
   Both return private no-store metadata. The `/content` subroute serves only
   owner-checked, integrity-verified raster bytes, with `nosniff` and no-store;
   `download=true` selects attachment disposition. It never generates an image.
-  The candidate browser UI discovers receipts for visible signed-in messages,
+  The browser UI discovers receipts for visible signed-in messages,
   including error responses, and recovers original images after reload. Funded
-  production/account-linking and full Chat deployment canaries remain outstanding.
+  production image/text canaries passed on September 9. Broader customer
+  crash/recovery, partial-batch and failed-generation refund proofs remain
+  separate gates; deployment alone does not prove them.
   Journal rows follow Chat user/message deletion; Core's billing records do
   not. Production code rollback must retain a populated journal schema.
 - Chat proxies Core's canonical credit summary and bounded text quote through
