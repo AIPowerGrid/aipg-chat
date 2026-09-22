@@ -27,7 +27,10 @@ export default function SimplePopover({
       <Popover.Trigger asChild>
         <div>{typeof trigger === "function" ? trigger(open) : trigger}</div>
       </Popover.Trigger>
-      <Popover.Content align="start" side="top" width="md" {...rest} />
+      {/* "fit" (Opal's own default) sizes the box to its content; the previous
+          "md" (w-48 = 192px) clipped any panel wider than that, cutting off
+          the credits and grid-status popovers. Callers still override via rest. */}
+      <Popover.Content align="start" side="top" width="fit" {...rest} />
     </Popover>
   );
 }
